@@ -1,6 +1,6 @@
 [package]
 name = "tmtc-c2a"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MPL-2.0"
 
@@ -30,7 +30,7 @@ tonic-web = "0.9"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"
 tlmcmddb = "0.2.0"
-structpack = { path = "../structpack" }
+structpack = "0.5.0"
 gaia-ccsds-c2a = { path = "../gaia-ccsds-c2a" }
 gaia-tmtc = { path = "../gaia-tmtc" }
 kble-socket = { version = "0.2.0", features = ["tungstenite"] }
