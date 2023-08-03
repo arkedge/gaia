@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-ccsds-c2a"
-version = "0.4.0-beta.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -553,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-stub"
-version = "0.4.0-beta.1"
+version = "0.4.0"
 dependencies = [
  "prost",
  "prost-types",
@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-tmtc"
-version = "0.4.0-beta.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1679,7 +1679,7 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "structpack"
-version = "0.4.0-beta.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -1821,7 +1821,7 @@ dependencies = [
 
 [[package]]
 name = "tmtc-c2a"
-version = "0.4.0-beta.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
