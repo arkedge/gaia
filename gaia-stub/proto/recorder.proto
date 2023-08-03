@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package recorder;
+
+import "tco_tmiv.proto";
+import "google/protobuf/timestamp.proto";
+
+service Recorder {
+  rpc PostCommand(PostCommandRequest) returns (PostCommandResponse);
+  rpc PostTelemetry(PostTelemetryRequest) returns (PostTelemetryResponse);
+}
+
+message PostCommandRequest {
+  tco_tmiv.Tco tco = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message PostCommandResponse {
+}
+
+message PostTelemetryRequest {
+  tco_tmiv.Tmiv tmiv = 1;
+}
+
+message PostTelemetryResponse {
+}

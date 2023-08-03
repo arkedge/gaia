@@ -1,0 +1,59 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: arkedge/gh-federation@v3.1.0
+        with:
+          endpoint: ${{ secrets.GH_FEDERATION_ENDPOINT }}
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+
+      - name: Get Rust toolchain
+        id: toolchain
+        run: |
+          awk -F'[ ="]+' '$1 == "channel" { print "toolchain=" $2 }' rust-toolchain >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.toolchain }}
+          components: clippy, rustfmt
+
+      - name: cache dependencies
+        uses: Swatinem/rust-cache@v2.5.1
+
+      - name: reviewdog / clippy
+        uses: sksat/action-clippy@v0.2.1
+        with:
+          reporter: github-pr-review
+
+      - name: format
+        run: |
+          cargo fmt --all -- --check
+
+      - name: unit test
+        run: |
+          cargo test

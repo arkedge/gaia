@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package tmtc_generic_c2a;
+
+service TmtcGenericC2a {
+  rpc GetSatelliteSchema(GetSatelliteSchemaRequest) returns (GetSateliteSchemaResponse);
+}
+
+message GetSatelliteSchemaRequest {
+}
+
+message GetSateliteSchemaResponse {
+  SatelliteSchema satellite_schema = 1;
+}
+
+message SatelliteSchema {
+  map<string, TelemetryChannelSchema> telemetry_channels = 1;
+  map<string, TelemetryComponentSchema> telemetry_components = 2;
+  map<string, CommandPrefixSchema> command_prefixes = 3;
+  map<string, CommandComponentSchema> command_components = 4;
+}
+
+message TelemetryComponentSchema {
+  TelemetryComponentSchemaMetadata metadata = 1;
+  map<string, TelemetrySchema> telemetries = 2;
+}
+
+message TelemetryComponentSchemaMetadata {
+  uint32 apid = 1;
+}
+
+message CommandComponentSchema {
+  CommandComponentSchemaMetadata metadata = 1;
+  map<string, CommandSchema> commands = 2;
+}
+
+message CommandComponentSchemaMetadata {
+  uint32 apid = 1;
+}
+
+message CommandSchema {
+  CommandSchemaMetadata metadata = 1;
+  repeated CommandParameterSchema parameters = 2;
+}
+
+message CommandSchemaMetadata {
+  uint32 id = 1;
+}
+
+message CommandParameterSchema {
+  CommandParameterSchemaMetadata metadata = 1;
+  CommandParameterDataType data_type = 2;
+}
+
+message CommandParameterSchemaMetadata {
+  // TODO: string description = 1;
+}
+
+enum CommandParameterDataType {
+  CMD_PARAMETER_INTEGER = 0;
+  CMD_PARAMETER_DOUBLE = 1;
+  CMD_PARAMETER_BYTES = 2;
+}
+
+message TelemetrySchema {
+  TelemetrySchemaMetadata metadata = 1;
+  repeated TelemetryFieldSchema fields = 2;
+}
+
+message TelemetrySchemaMetadata {
+  uint32 id = 1;
+}
+
+message TelemetryFieldSchema {
+  TelemetryFieldSchemaMetadata metadata = 1;
+  string name = 2;
+  // TODO: TelemetryFieldDataType data_type = 3;
+}
+
+message TelemetryFieldSchemaMetadata {
+  // TODO: string description = 1;
+}
+
+message TelemetryChannelSchema {
+  TelemetryChannelSchemaMetadata metadata = 1;
+}
+
+message TelemetryChannelSchemaMetadata {
+  uint32 destination_flag_mask = 1;
+}
+
+message CommandPrefixSchema {
+  CommandPrefixSchemaMetadata metadata = 1;
+  map<string, CommandSubsystemSchema> subsystems = 2;
+}
+
+message CommandPrefixSchemaMetadata {
+}
+
+message CommandSubsystemSchema {
+  CommandSubsystemSchemaMetadata metadata = 1;
+  bool has_time_indicator = 2;
+}
+
+message CommandSubsystemSchemaMetadata {
+  uint32 destination_type = 1;
+  uint32 execution_type = 2;
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package tco_tmiv;
+
+import "google/protobuf/timestamp.proto";
+
+message Tco {
+  string name = 1;
+  repeated TcoParam params = 2;
+}
+
+message TcoParam {
+  string name = 1;
+  oneof value {
+    int64 integer = 2;
+    double double = 3;
+    bytes bytes = 4;
+  }
+}
+
+message Tmiv {
+  string name = 1;
+  uint64 plugin_received_time = 2;
+  repeated TmivField fields = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message TmivField {
+  string name = 1;
+  oneof value {
+    string string = 2;
+    double double = 3;
+    int64 integer = 4;
+    string enum = 5;
+    bytes bytes = 6;
+  }
+}

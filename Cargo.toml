@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "gaia-stub",
+    "structpack",
+    "gaia-tmtc",
+    "gaia-ccsds-c2a",
+    "tmtc-c2a",
+]

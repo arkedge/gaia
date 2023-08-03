@@ -1,0 +1,85 @@
+name: rustdoc
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  rustdoc:
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: arkedge/gh-federation@v3.1.0
+        with:
+          endpoint: ${{ secrets.GH_FEDERATION_ENDPOINT }}
+
+      - name: checkout all the submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+
+      - name: Get Rust toolchain
+        id: toolchain
+        run: |
+          awk -F'[ ="]+' '$1 == "channel" { print "toolchain=" $2 }' rust-toolchain >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.toolchain }}
+
+      - name: cache dependencies
+        uses: Swatinem/rust-cache@v2.5.1
+
+      - run: rm -rf ./target/doc
+
+      - run: cargo doc --all --no-deps
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+      - name: add index.html
+        run: |
+          cat > ./target/doc/index.html << EOS
+          <meta http-equiv="refresh" content="1;URL=/gaia_tmtc">
+          EOS
+
+      - name: Fix file permissions
+        shell: sh
+        run: |
+          chmod -c -R +rX "target/doc/"
+
+      - name: Archive rustdoc
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: target/doc/
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: rustdoc
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

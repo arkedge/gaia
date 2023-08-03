@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package broker;
+
+import "tco_tmiv.proto";
+
+service Broker {
+  rpc PostCommand(PostCommandRequest) returns (PostCommandResponse);
+  rpc OpenTelemetryStream(TelemetryStreamRequest) returns (stream TelemetryStreamResponse);
+  rpc GetLastReceivedTelemetry(GetLastReceivedTelemetryRequest) returns (GetLastReceivedTelemetryResponse);
+
+  rpc OpenCommandStream(stream CommandStreamRequest) returns (stream CommandStreamResponse);
+  rpc PostTelemetry(PostTelemetryRequest) returns (PostTelemetryResponse);
+}
+
+message PostCommandRequest {
+  tco_tmiv.Tco tco = 3;
+}
+
+message PostCommandResponse {
+  // TODO:
+}
+
+message CommandStreamRequest {
+}
+
+message CommandStreamResponse {
+  string tco_json = 1;
+  tco_tmiv.Tco tco = 2;
+}
+
+message PostTelemetryRequest {
+  string tmiv_json = 1;
+  tco_tmiv.Tmiv tmiv = 2;
+}
+
+message PostTelemetryResponse {
+  // TODO:
+}
+
+message TelemetryStreamRequest {
+}
+
+message TelemetryStreamResponse {
+  tco_tmiv.Tmiv tmiv = 3;
+}
+
+message GetLastReceivedTelemetryRequest {
+  string telemetry_name = 1;
+}
+
+message GetLastReceivedTelemetryResponse {
+  tco_tmiv.Tmiv tmiv = 1;
+}
