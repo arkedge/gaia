@@ -38,7 +38,7 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
 
       - name: cache dependencies
-        uses: Swatinem/rust-cache@v2.7.0
+        uses: Swatinem/rust-cache@v2.7.1
 
       - run: rm -rf ./target/doc
 
