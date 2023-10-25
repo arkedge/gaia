@@ -7,7 +7,7 @@ license = "MPL-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.9"
+tonic = "0.10"
 prost = "0.11"
 prost-types = "0.11"
 
