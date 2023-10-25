@@ -557,7 +557,7 @@ version = "0.5.0"
 dependencies = [
  "prost",
  "prost-types",
- "tonic",
+ "tonic 0.9.1",
  "tonic-build",
 ]
 
@@ -574,7 +574,7 @@ dependencies = [
  "serde",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.9.1",
  "tracing",
 ]
 
@@ -1856,7 +1856,7 @@ dependencies = [
  "tlmcmddb",
  "tokio",
  "tokio-tungstenite",
- "tonic",
+ "tonic 0.9.1",
  "tonic-build",
  "tonic-health",
  "tonic-reflection",
@@ -2001,6 +2001,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "tonic"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d560933a0de61cf715926b9cac824d4c883c2c43142f787595e48280c40a1d0e"
+dependencies = [
+ "base64 0.21.0",
+ "bytes",
+ "http",
+ "http-body",
+ "percent-encoding",
+ "pin-project",
+ "tokio",
+ "tokio-stream",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
 name = "tonic-build"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2023,7 +2042,7 @@ dependencies = [
  "prost",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.9.1",
 ]
 
 [[package]]
@@ -2036,23 +2055,23 @@ dependencies = [
  "prost-types",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.9.1",
 ]
 
 [[package]]
 name = "tonic-web"
-version = "0.9.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ea5a992300fc324dd8c529868ec7b07ac85510431f982e6f716c2cac56701d9"
+checksum = "0fddb2a37b247e6adcb9f239f4e5cefdcc5ed526141a416b943929f13aea2cce"
 dependencies = [
  "base64 0.21.0",
  "bytes",
- "futures-core",
  "http",
  "http-body",
  "hyper",
  "pin-project",
- "tonic",
+ "tokio-stream",
+ "tonic 0.10.2",
  "tower-http",
  "tower-layer",
  "tower-service",

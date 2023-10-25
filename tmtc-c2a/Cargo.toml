@@ -26,7 +26,7 @@ prost-types = "0.11"
 tonic = { version = "0.9", features = ["tls", "tls-roots-common", "tls-webpki-roots"] }
 tonic-health = "0.9"
 tonic-reflection = "0.9"
-tonic-web = "0.9"
+tonic-web = "0.10"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"
 tlmcmddb = "0.2.0"
