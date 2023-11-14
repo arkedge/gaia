@@ -20,6 +20,20 @@
       "groupName": "Sentry",
       "groupSlug": "sentry",
       "packageNames": ["sentry", "sentry-tracing"]
+    },
+    {
+      "groupName": "tonic",
+      "groupSlug": "tonic",
+      "packageNames": [
+        "tonic",
+        "tonic-build",
+        "tonic-health",
+        "tonic-reflection",
+        "tonic-web",
+        "prost",
+        "prost-types",
+        "prost-derive"
+      ]
     }
   ],
   "regexManagers": [
