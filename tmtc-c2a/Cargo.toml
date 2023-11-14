@@ -21,12 +21,12 @@ http = "0.2"
 tower = "0.4"
 tower-http = { version = "0.4", features = ["trace", "cors"] }
 tokio = { version = "1", features = ["full"] }
-prost = "0.11"
-prost-types = "0.11"
-tonic = { version = "0.9", features = ["tls", "tls-roots-common", "tls-webpki-roots"] }
-tonic-health = "0.9"
-tonic-reflection = "0.9"
-tonic-web = "0.9"
+prost = "0.12"
+prost-types = "0.12"
+tonic = { version = "0.10", features = ["tls", "tls-roots-common", "tls-webpki-roots"] }
+tonic-health = "0.10"
+tonic-reflection = "0.10"
+tonic-web = "0.10"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"
 tlmcmddb = "0.2.0"
@@ -38,4 +38,4 @@ tokio-tungstenite = "0.18"
 itertools = "0.11.0"
 
 [build-dependencies]
-tonic-build = "0.9"
+tonic-build = "0.10"
