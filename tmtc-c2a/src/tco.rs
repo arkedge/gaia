@@ -39,7 +39,7 @@ impl<'a> Reader<'a> {
     pub fn parameters(&self) -> Vec<&'a tco_param::Value> {
         let mut values = Vec::with_capacity(PARAMETER_NAMES.len());
         for name in PARAMETER_NAMES.iter() {
-            let Some (value) = self.get_value_by_name(name) else {
+            let Some(value) = self.get_value_by_name(name) else {
                 break;
             };
             values.push(value);

@@ -204,7 +204,11 @@ where
             let tf: Option<ccsds_c2a::aos::TransferFrame<_>> = tf_buf.transfer_frame();
             let Some(tf) = tf else {
                 let bytes = tf_buf.into_inner();
-                warn!("transfer frame is too short ({} bytes): {:02x?}", bytes.len(), bytes);
+                warn!(
+                    "transfer frame is too short ({} bytes): {:02x?}",
+                    bytes.len(),
+                    bytes
+                );
                 continue;
             };
             let incoming_scid = tf.primary_header.scid();
