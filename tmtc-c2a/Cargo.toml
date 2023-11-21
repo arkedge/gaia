@@ -19,7 +19,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 http = "0.2"
 tower = "0.4"
-tower-http = { version = "0.4", features = ["trace", "cors"] }
+tower-http = { version = "0.5", features = ["trace", "cors"] }
 tokio = { version = "1", features = ["full"] }
 prost = "0.12"
 prost-types = "0.12"
