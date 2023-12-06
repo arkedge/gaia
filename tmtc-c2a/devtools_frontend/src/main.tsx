@@ -24,19 +24,7 @@ FocusStyleManager.onlyShowFocusOnTabs();
 const root = ReactDOMClient.createRoot(document.getElementById("root")!);
 
 const baseUrlLoader: LoaderFunction = async ({ params }) => {
-  const encodedBaseUrl = params["baseUrl"]!;
-  const abbrBaseUrl = decodeURIComponent(encodedBaseUrl);
-  let baseUrl;
-  if (abbrBaseUrl.match(/^\d+$/)) {
-    baseUrl = `http://localhost:${abbrBaseUrl}`;
-  } else if (
-    abbrBaseUrl.startsWith("http://") ||
-    abbrBaseUrl.startsWith("https://")
-  ) {
-    baseUrl = abbrBaseUrl;
-  } else {
-    baseUrl = `http://${abbrBaseUrl}`;
-  }
+  const baseUrl = '/';
   const worker = new SharedWorker(new URL("./worker.ts", import.meta.url), {
     type: "module",
     /* @vite-ignore */

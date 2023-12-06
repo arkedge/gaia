@@ -4,6 +4,7 @@ import pluginRewriteAll from "vite-plugin-rewrite-all";
 
 export default defineConfig({
   resolve: {},
+  base: "/devtools/",
   plugins: [react(), pluginRewriteAll()],
   server: {
     hmr: {},
