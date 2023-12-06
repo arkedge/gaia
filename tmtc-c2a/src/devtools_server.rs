@@ -23,9 +23,7 @@ pub async fn serve(uri: Uri) -> Response {
 
             ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
         }
-        None => {
-            index_html().await
-        }
+        None => index_html().await,
     }
 }
 
