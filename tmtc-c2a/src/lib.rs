@@ -6,3 +6,5 @@ pub mod registry;
 pub mod satellite;
 mod tco;
 mod tmiv;
+
+pub mod devtools_server;

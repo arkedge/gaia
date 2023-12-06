@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use anyhow::{Context, Result};
+use axum::{error_handling::HandleError, response::Redirect, routing::get};
 use clap::Parser;
 use gaia_tmtc::broker::broker_server::BrokerServer;
 use gaia_tmtc::{
@@ -21,7 +22,7 @@ use tower_http::trace::TraceLayer;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use tmtc_c2a::{kble_gs, proto, registry, satellite, Satconfig};
+use tmtc_c2a::{devtools_server, kble_gs, proto, registry, satellite, Satconfig};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -150,14 +151,23 @@ async fn main() -> Result<()> {
         let socket_addr = SocketAddr::new(args.broker_addr, args.broker_port);
         tracing::info!(message = "starting broker", %socket_addr);
 
-        Server::builder()
-            .accept_http1(true)
+        let rpc_service = Server::builder()
             .layer(layer)
             .add_service(broker_server)
             .add_service(tmtc_generic_c2a_server)
             .add_service(health_service)
             .add_service(reflection_service)
-            .serve(socket_addr)
+            .into_service();
+
+        let app = axum::Router::new()
+            .nest(
+                "/devtools/",
+                axum::Router::new().fallback(devtools_server::serve),
+            )
+            .route("/", get(|| async { Redirect::to("/devtools/") }))
+            .route("/devtools", get(|| async { Redirect::to("/devtools/") }))
+            .fallback_service(HandleError::new(rpc_service, handle_rpc_error));
+        axum::Server::bind(&socket_addr).serve(app.into_make_service())
     };
 
     tokio::select! {
@@ -165,4 +175,17 @@ async fn main() -> Result<()> {
         ret = kble_socket_fut => Ok(ret?),
         ret = server_task => Ok(ret?),
     }
+}
+
+async fn handle_rpc_error(
+    err: Box<dyn std::error::Error + Send + Sync>,
+) -> impl axum::response::IntoResponse {
+    (
+        axum::http::StatusCode::OK,
+        [
+            ("content-type", "application/grpc".to_owned()),
+            ("grpc-status", "13".to_owned()),
+            ("content-type", format!("internal error: {err}")),
+        ],
+    )
 }
