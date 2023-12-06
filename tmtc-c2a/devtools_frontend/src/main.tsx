@@ -5,7 +5,6 @@ import {
   LoaderFunction,
   RouterProvider,
   createBrowserRouter,
-  redirect,
   useRouteError,
 } from "react-router-dom";
 import { TelemetryView } from "./components/TelemetryView";
@@ -23,12 +22,11 @@ FocusStyleManager.onlyShowFocusOnTabs();
 
 const root = ReactDOMClient.createRoot(document.getElementById("root")!);
 
-const baseUrlLoader: LoaderFunction = async ({ params }) => {
-  const baseUrl = '/';
+const clientLoader: LoaderFunction = async () => {
   const worker = new SharedWorker(new URL("./worker.ts", import.meta.url), {
     type: "module",
     /* @vite-ignore */
-    name: baseUrl,
+    name: location.origin,
   });
   const client = buildClient<GrpcClientService>(worker);
   const { satelliteSchema } = await client.getSatelliteSchema().catch((err) => {
@@ -39,8 +37,6 @@ const baseUrlLoader: LoaderFunction = async ({ params }) => {
   })!;
   return { client, satelliteSchema };
 };
-
-const DEFAULT_TMTC_PORT = 8900;
 
 const ErrorBoundary = () => {
   const error = useRouteError();
@@ -62,43 +58,38 @@ const ErrorBoundary = () => {
   );
 };
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    loader: () => {
-      if (import.meta.env.VITE_PREFER_SELF_PORT) {
-        return redirect(`/${location.port || DEFAULT_TMTC_PORT}`);
-      } else {
-        return redirect(`/${DEFAULT_TMTC_PORT}`);
-      }
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <Layout />,
+      loader: clientLoader,
+      errorElement: <ErrorBoundary />,
+      children: [
+        {
+          path: "",
+          element: <Top />,
+        },
+        {
+          path: "telemetries/:tmivName",
+          element: <TelemetryView />,
+        },
+        {
+          path: "command",
+          element: <CommandView />,
+        },
+      ],
     },
-  },
+  ],
   {
-    path: ":baseUrl",
-    element: <Layout />,
-    loader: baseUrlLoader,
-    errorElement: <ErrorBoundary />,
-    children: [
-      {
-        path: "",
-        element: <Top />,
-      },
-      {
-        path: "telemetries/:tmivName",
-        element: <TelemetryView />,
-      },
-      {
-        path: "command",
-        element: <CommandView />,
-      },
-    ],
-  },
-]);
+    basename: import.meta.env.BASE_URL,
+  }
+);
 
 root.render(
   <React.StrictMode>
     <HelmetProvider>
       <RouterProvider router={router} />
     </HelmetProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );

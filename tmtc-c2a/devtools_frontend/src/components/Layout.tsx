@@ -24,12 +24,10 @@ const formatU8Hex = (u8: number) => {
 };
 
 type TelemetryListSidebarProps = {
-  baseUrl: string;
   activeName: string | undefined;
   telemetryListItems: TelemetryMenuItem[];
 };
 const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
-  baseUrl,
   activeName: tmivName,
   telemetryListItems,
 }) => {
@@ -38,7 +36,7 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
       <ul>
         <li>
           <NavLink
-            to={`/${baseUrl}/command`}
+            to={`/command`}
             className={({ isActive }) =>
               `${Classes.MENU_ITEM} ${isActive ? Classes.ACTIVE : ""}`
             }
@@ -62,7 +60,7 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
           return (
             <li key={item.name}>
               <Link
-                to={`/${baseUrl}/telemetries/${item.name}`}
+                to={`/telemetries/${item.name}`}
                 className={`${Classes.MENU_ITEM} ${
                   tmivName === item.name ? Classes.ACTIVE : ""
                 }`}
@@ -87,7 +85,6 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
 export const Layout = () => {
   const ctx = useLoaderData() as ClientContext;
   const params = useParams();
-  const baseUrl = params["baseUrl"]!;
   const tmivName = params["tmivName"];
 
   const telemetryListItems = useMemo(() => {
@@ -141,7 +138,6 @@ export const Layout = () => {
             collapsible
           >
             <TelemetryListSidebar
-              baseUrl={baseUrl}
               activeName={tmivName}
               telemetryListItems={telemetryListItems}
             />
