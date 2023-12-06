@@ -133,8 +133,8 @@ export const Layout = () => {
         <PanelGroup direction="horizontal" autoSaveId="c2a-devtools">
           <Panel
             className="bg-slate-900 text-slate-200 flex flex-col shrink-0 grow-0 h-full"
-            minSize={2}
-            defaultSize={20}
+            minSizePixels={2}
+            defaultSizePercentage={20}
             collapsible
           >
             <TelemetryListSidebar
