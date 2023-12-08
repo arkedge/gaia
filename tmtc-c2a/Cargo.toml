@@ -28,7 +28,7 @@ tonic-health = "0.10"
 tonic-reflection = "0.10"
 tonic-web = "0.10"
 axum = { version = "0.6", default-features = false, features = ["http1", "tokio"] }
-rust-embed = "8.0.0"
+rust-embed = { version = "8.0.0", features = ["interpolate-folder-path"] }
 mime_guess = "2.0.4"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"

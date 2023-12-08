@@ -9,14 +9,20 @@ fn main() {
         .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
 
     if std::env::var("SKIP_FRONTEND_BUILD").is_err() {
+        println!("cargo:rerun-if-changed=devtools_frontend");
         let status = Command::new("yarn")
             .current_dir("devtools_frontend")
             .status()
             .expect("failed to build frontend");
         assert!(status.success());
-        let status = Command::new("yarn")
+        let devtools_out_dir = out_dir.join("devtools_dist");
+        let status = Command::new("npx")
             .current_dir("devtools_frontend")
-            .arg("build")
+            .arg("run-s")
+            .arg(&format!(
+                "build:vite -- --outDir {}",
+                devtools_out_dir.display()
+            ))
             .status()
             .expect("failed to build frontend");
         assert!(status.success());

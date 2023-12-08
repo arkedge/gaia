@@ -7,7 +7,7 @@ use rust_embed::RustEmbed;
 static INDEX_HTML: &str = "index.html";
 
 #[derive(RustEmbed)]
-#[folder = "./devtools_frontend/dist"]
+#[folder = "$OUT_DIR/devtools_dist"]
 struct Assets;
 
 pub async fn serve(uri: Uri) -> Response {
