@@ -47,8 +47,14 @@ impl TmivBuilder {
         let channels = self
             .tlm_registry
             .find_channels(space_packet.secondary_header.destination_flags());
+
         let mut fields = vec![];
-        tmiv::FieldsBuilder::new(&telemetry.schema).build(&mut fields, space_packet_bytes)?;
+        tmiv::FieldsBuilder::new(&telemetry.schema).build(
+            &mut fields,
+            space_packet_bytes,
+            space_packet,
+        )?;
+
         let tmivs = channels
             .map(|channel| {
                 let name = telemetry.build_tmiv_name(channel);
