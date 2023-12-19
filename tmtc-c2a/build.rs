@@ -16,13 +16,13 @@ fn main() {
             .expect("failed to build frontend");
         assert!(status.success());
         let devtools_out_dir = out_dir.join("devtools_dist");
-        let status = Command::new("npx")
+        let status = Command::new("yarn")
             .current_dir("devtools_frontend")
-            .arg("run-s")
-            .arg(&format!(
-                "build:vite -- --outDir {}",
-                devtools_out_dir.display()
-            ))
+            .arg("run")
+            .arg("build:vite")
+            .arg("--")
+            .arg("--outDir")
+            .arg(&devtools_out_dir)
             .status()
             .expect("failed to build frontend");
         assert!(status.success());
