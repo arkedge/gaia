@@ -83,7 +83,7 @@ const router = createBrowserRouter(
   ],
   {
     basename: import.meta.env.BASE_URL,
-  }
+  },
 );
 
 root.render(
@@ -91,5 +91,5 @@ root.render(
     <HelmetProvider>
       <RouterProvider router={router} />
     </HelmetProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
