@@ -6,7 +6,7 @@
     },
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "@types/wicg-file-system-access" ],
     "allowJs": false,
     "skipLibCheck": false,
     "esModuleInterop": false,

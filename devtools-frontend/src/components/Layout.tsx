@@ -1,5 +1,5 @@
 import { Classes, Icon } from "@blueprintjs/core";
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   Link,
   NavLink,
@@ -13,6 +13,7 @@ import { SatelliteSchema } from "../proto/tmtc_generic_c2a";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { IconNames } from "@blueprintjs/icons";
 import type { GrpcClientService } from "../worker";
+import type { RecorderService, RecordingStatus } from "../recorderWorker";
 
 type TelemetryMenuItem = {
   name: string;
@@ -31,6 +32,42 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
   activeName: tmivName,
   telemetryListItems,
 }) => {
+  const recorder = (useLoaderData() as ClientContext).client;
+  const [recorderStatus, setRecordingStatus] = useState<RecordingStatus | null>(
+    null
+  );
+  useEffect(() => {
+    const readerP = recorder
+      .openRecordingStatusStream()
+      .then((stream) => stream.getReader());
+    let cancel;
+    const cancelP = new Promise((resolve) => (cancel = resolve));
+    Promise.all([readerP, cancelP]).then(([reader]) => reader.cancel());
+    readerP.then(async (reader) => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const next = await reader.read();
+        if (next.done) {
+          break;
+        }
+        setRecordingStatus(next.value);
+      }
+    });
+    return cancel;
+  }, [recorder]);
+  const toggleRecordingStatus = async (name: string) => {
+    if (!recorderStatus?.directoryIsSet) {
+      const directoryHandle = await window.showDirectoryPicker({
+        mode: "readwrite",
+      });
+      recorder.setRootRecordDirectory(directoryHandle);
+    }
+    if (recorderStatus?.recordingTelemetries.has(name)) {
+      recorder.disableRecording(name);
+    } else {
+      recorder.enableRecording(name);
+    }
+  };
   return (
     <div className="p-1 h-full flex-1 flex flex-col">
       <ul>
@@ -82,6 +119,17 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
                   tmivName === item.name ? Classes.ACTIVE : ""
                 }`}
               >
+                <span onClick={() => toggleRecordingStatus(item.name)}>
+                  {recorderStatus?.recordingTelemetries.has(item.name)
+                    ? <div className="py-1">
+                        <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                      </div>
+                    : <div className="py-1">
+                        <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
+                      </div>
+
+                    }
+                </span>
                 <code
                   className={`${Classes.FILL} ${Classes.TEXT_OVERFLOW_ELLIPSIS}`}
                 >
@@ -108,10 +156,10 @@ export const Layout = () => {
     const items: TelemetryMenuItem[] = [];
     const channelNames = Object.keys(ctx.satelliteSchema.telemetryChannels);
     for (const [componentName, componentSchema] of Object.entries(
-      ctx.satelliteSchema.telemetryComponents,
+      ctx.satelliteSchema.telemetryComponents
     )) {
       for (const [telemetryName, telemetrySchema] of Object.entries(
-        componentSchema.telemetries,
+        componentSchema.telemetries
       )) {
         for (const channelName of channelNames) {
           const name = `${channelName}.${componentName}.${telemetryName}`;
