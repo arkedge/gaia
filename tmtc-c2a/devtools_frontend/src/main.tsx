@@ -16,6 +16,7 @@ import { CommandView } from "./components/CommandView";
 import { OldCommandView } from "./components/OldCommandView";
 import { buildClient } from "./client";
 import type { GrpcClientService } from "./worker";
+import type { RecorderService } from "./recorderWorker";
 import { IconNames } from "@blueprintjs/icons";
 import { FriendlyError } from "./error";
 
@@ -36,6 +37,7 @@ const clientLoader: LoaderFunction = async () => {
       details: "Make sure that your tmtc-c2a is running.",
     });
   })!;
+
   return { client, satelliteSchema };
 };
 
