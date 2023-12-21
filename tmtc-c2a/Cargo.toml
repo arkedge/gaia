@@ -32,7 +32,7 @@ rust-embed = { version = "8.0.0", features = ["interpolate-folder-path"] }
 mime_guess = "2.0.4"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"
-tlmcmddb = "0.2.0"
+tlmcmddb = { git = "https://github.com/arkedge/c2a-tlmcmddb", branch = "blob_tlm_model" }
 structpack = "0.5.0"
 gaia-ccsds-c2a = { path = "../gaia-ccsds-c2a" }
 gaia-tmtc = { path = "../gaia-tmtc" }
