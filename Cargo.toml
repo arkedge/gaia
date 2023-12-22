@@ -6,6 +6,7 @@ members = [
     "gaia-tmtc",
     "gaia-ccsds-c2a",
     "tmtc-c2a",
+    "tmtc-c2a/devtools_frontend/wasm-opslang", #questionable
 ]
 
 [workspace.package]

@@ -17,6 +17,7 @@ export type GrpcClientService = {
   getSatelliteSchema(): Promise<GetSateliteSchemaResponse>;
   postCommand(input: PostCommandRequest): Promise<PostCommandResponse>;
   openTelemetryStream(tmivName: string): Promise<ReadableStream<Tmiv>>;
+  lastTelemetryValue(tmivName: string): Promise<Tmiv | undefined>;
 };
 
 export type WorkerRpcService = {
@@ -88,6 +89,9 @@ const server = {
         telemetryBus.removeEventListener(tmivName, handler as any);
       },
     });
+  },
+  async lastTelemetryValue(tmivName: string): Promise<Tmiv | undefined> {
+    return telemetryLastValues.get(tmivName);
   },
 };
 
