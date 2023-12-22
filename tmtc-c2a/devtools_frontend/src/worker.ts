@@ -17,6 +17,7 @@ export type GrpcClientService = {
   getSatelliteSchema(): Promise<GetSateliteSchemaResponse>;
   postCommand(input: PostCommandRequest): Promise<PostCommandResponse>;
   openTelemetryStream(tmivName: string): Promise<ReadableStream<Tmiv>>;
+  lastTelemetryValue(tmivName: string): Promise<Tmiv | undefined>;
 };
 
 export type WorkerRpcService = {
@@ -43,7 +44,8 @@ export type WorkerResponse<S extends WorkerRpcService> = {
 };
 
 const transport = new GrpcWebFetchTransport({
-  baseUrl: self.name,
+  //baseUrl: self.name,
+  baseUrl: "http://localhost:8900",
 });
 const brokerClient = new BrokerClient(transport);
 const tmtcGenericC2a = new TmtcGenericC2aClient(transport);
@@ -88,6 +90,9 @@ const server = {
         telemetryBus.removeEventListener(tmivName, handler as any);
       },
     });
+  },
+  async lastTelemetryValue(tmivName: string): Promise<Tmiv | undefined> {
+    return telemetryLastValues.get(tmivName);
   },
 };
 
