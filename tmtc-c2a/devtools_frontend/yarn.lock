@@ -489,12 +489,12 @@
   integrity sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==
 
 "@protobuf-ts/grpcweb-transport@^2.8.2":
-  version "2.9.1"
-  resolved "https://registry.yarnpkg.com/@protobuf-ts/grpcweb-transport/-/grpcweb-transport-2.9.1.tgz#523647acbf98de54b291a57e770e3127820ba879"
-  integrity sha512-42bvBX312qhPlosMNTZE9XI+lt58ISM5vEJKv/wOx2Fu70J0TdlLa4Bjz8xcuRlv4Pq1CA+94DC1IgNxNRsQdg==
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/@protobuf-ts/grpcweb-transport/-/grpcweb-transport-2.9.3.tgz#9f6370bfba46bc041fb577855bb72638625be4de"
+  integrity sha512-BP9oThZzrr1WJKJZKJ/o5yiDVaQe/T95Ef9eDZAkBbW6ObSnUAPi0I03xeJF8sjn6gRXabCSfpBbDXlxCefKEw==
   dependencies:
-    "@protobuf-ts/runtime" "^2.9.1"
-    "@protobuf-ts/runtime-rpc" "^2.9.1"
+    "@protobuf-ts/runtime" "^2.9.3"
+    "@protobuf-ts/runtime-rpc" "^2.9.3"
 
 "@protobuf-ts/plugin-framework@^2.9.1":
   version "2.9.1"
@@ -527,10 +527,22 @@
   dependencies:
     "@protobuf-ts/runtime" "^2.9.1"
 
+"@protobuf-ts/runtime-rpc@^2.9.3":
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime-rpc/-/runtime-rpc-2.9.3.tgz#7316373f2ffc2b5ab4c7e0c1ca0cad0a3c92585d"
+  integrity sha512-WelHpctvZeG8yhbb7tnsrLzotq9xjMCXuGuhJ8qMyEdNoBBEodbXseofAYFTebo2/PN2LzyEq3X6vwr5f8jqTA==
+  dependencies:
+    "@protobuf-ts/runtime" "^2.9.3"
+
 "@protobuf-ts/runtime@^2.9.1":
   version "2.9.1"
   resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime/-/runtime-2.9.1.tgz#faec7653ca9c01ced49b0ee01818d46b4b3cf2ac"
   integrity sha512-ZTc8b+pQ6bwxZa3qg9/IO/M/brRkvr0tic9cSGgAsDByfPrtatT2300wTIRLDk8X9WTW1tT+FhyqmcrbMHTeww==
+
+"@protobuf-ts/runtime@^2.9.3":
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime/-/runtime-2.9.3.tgz#b906223debaf42c9bd281e985a9f5652729153a4"
+  integrity sha512-nivzCpg/qYD0RX2OmHOahJALb8ndjGmUhNBcTJ0BbXoqKwCSM6vYA+vegzS3rhuaPgbyC7Ec8idlnizzUfIRuw==
 
 "@remix-run/router@1.13.0":
   version "1.13.0"
