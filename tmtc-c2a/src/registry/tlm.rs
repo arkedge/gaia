@@ -56,7 +56,7 @@ pub struct FieldMetadata {
     original_name: String,
     pub converted_name: String,
     pub raw_name: String,
-    display_format: Option<String>,
+    display_format: String,
 }
 
 #[derive(Debug, Clone)]
@@ -98,7 +98,7 @@ impl Registry {
                     .sorted_by_key(|m| m.order)
                     .map(|m| proto::TelemetryFieldSchema {
                         metadata: Some(proto::TelemetryFieldSchemaMetadata {
-                            display_format: m.display_format.clone().unwrap_or_default(),
+                            display_format: m.display_format.clone(),
                         }),
                         name: m.original_name.to_string(),
                     })

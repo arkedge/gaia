@@ -181,11 +181,15 @@ export interface TelemetryFieldSchema {
     name: string; // TODO: TelemetryFieldDataType data_type = 3;
 }
 /**
- * TODO: string description = 1;
- *
  * @generated from protobuf message tmtc_generic_c2a.TelemetryFieldSchemaMetadata
  */
 export interface TelemetryFieldSchemaMetadata {
+    /**
+     * TODO: string description = 1;
+     *
+     * @generated from protobuf field: string display_format = 1;
+     */
+    displayFormat: string;
 }
 /**
  * @generated from protobuf message tmtc_generic_c2a.TelemetryChannelSchema
@@ -1070,19 +1074,40 @@ export const TelemetryFieldSchema = new TelemetryFieldSchema$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class TelemetryFieldSchemaMetadata$Type extends MessageType<TelemetryFieldSchemaMetadata> {
     constructor() {
-        super("tmtc_generic_c2a.TelemetryFieldSchemaMetadata", []);
+        super("tmtc_generic_c2a.TelemetryFieldSchemaMetadata", [
+            { no: 1, name: "display_format", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
     }
     create(value?: PartialMessage<TelemetryFieldSchemaMetadata>): TelemetryFieldSchemaMetadata {
-        const message = {};
+        const message = { displayFormat: "" };
         globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
         if (value !== undefined)
             reflectionMergePartial<TelemetryFieldSchemaMetadata>(this, message, value);
         return message;
     }
     internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: TelemetryFieldSchemaMetadata): TelemetryFieldSchemaMetadata {
-        return target ?? this.create();
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string display_format */ 1:
+                    message.displayFormat = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
     }
     internalBinaryWrite(message: TelemetryFieldSchemaMetadata, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string display_format = 1; */
+        if (message.displayFormat !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.displayFormat);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
