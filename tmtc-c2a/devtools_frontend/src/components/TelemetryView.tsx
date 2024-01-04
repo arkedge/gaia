@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  TreeBlueprintNamespace,
-  TreeNamespace,
-  buildTree,
-  digTreeBlueprintNamespace,
-} from "../tree";
+import { TreeNamespace, addToNamespace, mapNamespace } from "../tree";
 
 import { Tmiv, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
@@ -12,14 +7,14 @@ import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TelemetrySchema } from "../proto/tmtc_generic_c2a";
 
-const buildTelemetryFieldTreeBlueprintFromSchema = (tlm: TelemetrySchema) => {
+const buildTelemetryFieldTreeBlueprintFromSchema = (
+  tlm: TelemetrySchema,
+): TreeNamespace<undefined> => {
   const fieldNames = tlm.fields.map((f) => f.name);
-  const root: TreeBlueprintNamespace = new Map();
+  const root: TreeNamespace<undefined> = new Map();
   for (const fieldName of fieldNames) {
     const path = fieldName.split(".");
-    const basename = path.pop()!;
-    const ns = digTreeBlueprintNamespace(root, path);
-    ns.set(basename, { type: "leaf", key: fieldName });
+    addToNamespace(root, path, undefined);
   }
   return root;
 };
@@ -30,7 +25,7 @@ type TelemetryValuePair = {
 };
 
 const buildTelemetryFieldTree = (
-  blueprint: TreeBlueprintNamespace,
+  blueprint: TreeNamespace<undefined>,
   fields: TmivField[],
 ): TreeNamespace<TelemetryValuePair> => {
   const convertedFieldMap = new Map<string, TmivField["value"]>();
@@ -43,7 +38,8 @@ const buildTelemetryFieldTree = (
       convertedFieldMap.set(field.name, field.value);
     }
   }
-  return buildTree(blueprint, (key) => {
+  return mapNamespace(blueprint, (path, _key) => {
+    const key = path.join(".");
     const converted = convertedFieldMap.get(key) ?? null;
     const raw = rawFieldMap.get(key) ?? null;
     return { converted, raw };
