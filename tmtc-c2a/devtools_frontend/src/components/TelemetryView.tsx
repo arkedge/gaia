@@ -7,25 +7,34 @@ import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TelemetrySchema } from "../proto/tmtc_generic_c2a";
 
+import initInterpolate, * as interpolate from "../../crates/wasm-interpolate/pkg";
+
+initInterpolate();
+
+type DisplayInfo = {
+  formatString: string;
+};
+
 const buildTelemetryFieldTreeBlueprintFromSchema = (
   tlm: TelemetrySchema,
-): TreeNamespace<undefined> => {
-  const fieldNames = tlm.fields.map((f) => f.name);
-  const root: TreeNamespace<undefined> = new Map();
-  for (const fieldName of fieldNames) {
-    const path = fieldName.split(".");
-    addToNamespace(root, path, undefined);
+): TreeNamespace<DisplayInfo> => {
+  const root: TreeNamespace<DisplayInfo> = new Map();
+  for (const field of tlm.fields) {
+    const path = field.name.split(".");
+    const formatString = field.metadata?.displayFormat ?? "";
+    addToNamespace(root, path, { formatString });
   }
   return root;
 };
 
 type TelemetryValuePair = {
+  displayInfo: DisplayInfo;
   converted: TmivField["value"] | null;
   raw: TmivField["value"] | null;
 };
 
 const buildTelemetryFieldTree = (
-  blueprint: TreeNamespace<undefined>,
+  blueprint: TreeNamespace<DisplayInfo>,
   fields: TmivField[],
 ): TreeNamespace<TelemetryValuePair> => {
   const convertedFieldMap = new Map<string, TmivField["value"]>();
@@ -38,15 +47,33 @@ const buildTelemetryFieldTree = (
       convertedFieldMap.set(field.name, field.value);
     }
   }
-  return mapNamespace(blueprint, (path, _key) => {
+  return mapNamespace(blueprint, (path, displayInfo) => {
     const key = path.join(".");
     const converted = convertedFieldMap.get(key) ?? null;
     const raw = rawFieldMap.get(key) ?? null;
-    return { converted, raw };
+    return { displayInfo, converted, raw };
   });
 };
 
-const prettyprintValue = (value: TmivField["value"] | null) => {
+const prettyprintValue = (
+  value: TmivField["value"] | null,
+  displayInfo: DisplayInfo,
+) => {
+  if (value === null) {
+    return "****";
+  }
+  try {
+    const ks = Object.keys(value).find((k) => k !== "oneofKind")!;
+    const rawValue = value[ks as keyof typeof value]!; //FIXME: ????
+    const interpolated = interpolate.format_value("{value:#0x}", rawValue);
+    return defaultPrettyPrint(value) + "/" + interpolated;
+  } catch (e) {
+    // TODO: show warning
+    return defaultPrettyPrint(value) + "!";
+  }
+};
+
+const defaultPrettyPrint = (value: TmivField["value"] | null) => {
   if (value === null) {
     return "****";
   }
@@ -76,7 +103,7 @@ const LeafCell: React.FC<ValueCellProps> = ({ name, value }) => {
       <span className="text-slate-300">{name}</span>
       <span className="min-w-[2ch]" />
       <span className="font-bold text-right">
-        {prettyprintValue(value.converted)}
+        {prettyprintValue(value.converted, value.displayInfo)}
       </span>
     </div>
   );
@@ -149,7 +176,7 @@ const InlineNamespaceContentCell: React.FC<InlineNamespaceContentCellProps> = ({
               <span className="ml-[0.5ch]" key={name}>
                 <span className="text-slate-300">{name}:</span>
                 <span className="font-bold">
-                  {prettyprintValue(v.value.converted)}
+                  {prettyprintValue(v.value.converted, v.value.displayInfo)}
                 </span>
               </span>
             );
