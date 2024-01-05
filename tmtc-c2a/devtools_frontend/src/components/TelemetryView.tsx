@@ -7,7 +7,7 @@ import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TelemetrySchema } from "../proto/tmtc_generic_c2a";
 
-import initInterpolate, * as interpolate from "../../crates/wasm-interpolate/pkg";
+import initInterpolate, * as interpolate from "@crate/wasm-interpolate/pkg";
 
 initInterpolate();
 
