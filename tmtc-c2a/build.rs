@@ -4,6 +4,26 @@ use std::{
     path::{Path, PathBuf},
 };
 
+fn wasm_packages_root() -> PathBuf {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let wasm_outdir = out_dir.join("wasm_packages");
+    wasm_outdir
+}
+
+fn wasm_pack(name: &str, devtools_build_dir: &PathBuf) {
+    let pkg_outdir = wasm_packages_root().join(name).join("pkg");
+    let status = Command::new("pnpm")
+        .current_dir(devtools_build_dir)
+        .arg("run")
+        .arg("crate")
+        .arg(name)
+        .arg("--out-dir")
+        .arg(&pkg_outdir)
+        .status()
+        .expect("failed to build frontend");
+    assert!(status.success());
+}
+
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
@@ -33,15 +53,19 @@ fn main() {
             .expect("failed to execute pnpm");
         assert!(status.success(), "failed to install deps for frontend");
 
+        wasm_pack("wasm-opslang", &devtools_build_dir);
+
         let devtools_out_dir = out_dir.join("devtools_dist");
         let status = Command::new("pnpm")
             .current_dir(&devtools_build_dir)
+            // vite.config.ts にwasmのビルド場所を教えるために環境変数を渡す
+            .envs([("DEVTOOLS_CRATE_ROOT", wasm_packages_root())])
             .arg("run")
             .arg("build:vite")
             .arg("--outDir")
             .arg(&devtools_out_dir)
             .status()
-            .expect("failed to execute yarn");
+            .expect("failed to execute pnpm");
         assert!(status.success(), "failed to build frontend");
     }
 
