@@ -7,3 +7,6 @@ members = [
     "gaia-ccsds-c2a",
     "tmtc-c2a",
 ]
+
+[workspace.package]
+version = "0.5.0"
