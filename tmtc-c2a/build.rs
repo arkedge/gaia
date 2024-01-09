@@ -22,8 +22,8 @@ fn main() {
         let status = Command::new("yarn")
             .current_dir(&devtools_build_dir)
             .status()
-            .expect("failed to build frontend");
-        assert!(status.success());
+            .expect("failed to execute yarn");
+        assert!(status.success(), "failed to install deps for frontend");
 
         let devtools_out_dir = out_dir.join("devtools_dist");
         let status = Command::new("yarn")
@@ -34,8 +34,8 @@ fn main() {
             .arg("--outDir")
             .arg(&devtools_out_dir)
             .status()
-            .expect("failed to build frontend");
-        assert!(status.success());
+            .expect("failed to execute yarn");
+        assert!(status.success(), "failed to build frontend");
     }
 }
 
