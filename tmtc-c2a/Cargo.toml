@@ -1,6 +1,6 @@
 [package]
 name = "tmtc-c2a"
-version = "0.5.0"
+version.workspace = true
 edition = "2021"
 license = "MPL-2.0"
 
