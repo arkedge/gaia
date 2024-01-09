@@ -17,7 +17,7 @@ fn main() {
 
         // copy frontend source into OUT_DIR
         let devtools_build_dir = out_dir.join("devtools_frontend");
-        copy_dir_all("devtools_frontend", &devtools_build_dir).unwrap();
+        copy_devtools_dir("devtools_frontend", &devtools_build_dir).unwrap();
 
         let status = Command::new("yarn")
             .current_dir(&devtools_build_dir)
@@ -39,13 +39,16 @@ fn main() {
     }
 }
 
-fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+fn copy_devtools_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
     fs::create_dir_all(&dst)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let ty = entry.file_type()?;
         if ty.is_dir() {
-            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+            if entry.file_name().to_str() == Some("node_modules") {
+                continue;
+            }
+            copy_devtools_dir(entry.path(), dst.as_ref().join(entry.file_name()))?;
         } else {
             fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
         }
