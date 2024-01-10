@@ -9,4 +9,11 @@ members = [
 ]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1"
+
+[workspace.dependencies]
+structpack = "0.6"
+
+gaia-stub = { path = "gaia-stub" }
+gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
+gaia-tmtc = { path = "gaia-tmtc" }
