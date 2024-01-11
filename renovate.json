@@ -1,14 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "github>arkedge/renovate-config"
   ],
   "packageRules": [
-    {
-      "groupName": "Rust",
-      "groupSlug": "rust",
-      "packageNames": ["rust", "ghcr.io/sksat/cargo-chef-docker"]
-    },
     {
       "groupName": "Typescript",
       "groupSlug": "typescript",
@@ -34,17 +29,6 @@
         "prost-types",
         "prost-derive"
       ]
-    }
-  ],
-  "regexManagers": [
-    {
-      "fileMatch": ["^rust-toolchain(\\.toml)?$"],
-      "matchStrings": [
-        "channel\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "rust",
-      "lookupNameTemplate": "rust-lang/rust",
-      "datasourceTemplate": "github-releases"
     }
   ]
 }
