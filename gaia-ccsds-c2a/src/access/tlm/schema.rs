@@ -117,7 +117,7 @@ pub struct FieldIter<'a> {
 }
 
 impl<'a> Iterator for FieldIter<'a> {
-    type Item = Result<(&'a str, FieldSchema)>;
+    type Item = Result<(&'a str, &'a tlmdb::DisplayInfo, FieldSchema)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (obs, field, bit_range) = self.fields.next()?;
@@ -131,10 +131,11 @@ fn build_field_schema(
     obs: tlmdb::OnboardSoftwareInfo,
     field: &tlmdb::Field,
     bit_range: Range<usize>,
-) -> Result<(&str, FieldSchema)> {
+) -> Result<(&str, &tlmdb::DisplayInfo, FieldSchema)> {
     let converter = build_integral_converter(&field.conversion_info);
     Ok((
         &field.name,
+        &field.display_info,
         match obs.variable_type {
             tlmdb::VariableType::Int8 => FieldSchema::Integral(IntegralFieldSchema {
                 converter,

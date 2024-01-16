@@ -8,6 +8,7 @@ use gaia_ccsds_c2a::access::tlm::schema::{
     from_tlmcmddb, FieldSchema, FloatingFieldSchema, IntegralFieldSchema,
 };
 use itertools::Itertools;
+use tlmcmddb::tlm::DisplayInfo;
 
 use crate::{
     proto::tmtc_generic_c2a::{self as proto},
@@ -55,6 +56,7 @@ pub struct FieldMetadata {
     original_name: String,
     pub converted_name: String,
     pub raw_name: String,
+    display_format: String,
 }
 
 #[derive(Debug, Clone)]
@@ -95,7 +97,9 @@ impl Registry {
                     .chain(fat_tlm_schema.schema.floating_fields.iter().map(|(m, _)| m))
                     .sorted_by_key(|m| m.order)
                     .map(|m| proto::TelemetryFieldSchema {
-                        metadata: Some(proto::TelemetryFieldSchemaMetadata {}),
+                        metadata: Some(proto::TelemetryFieldSchemaMetadata {
+                            display_format: m.display_format.clone(),
+                        }),
                         name: m.original_name.to_string(),
                     })
                     .collect();
@@ -195,15 +199,15 @@ impl Registry {
 }
 
 fn build_telemetry_schema<'a>(
-    iter: impl Iterator<Item = Result<(&'a str, FieldSchema)>>,
+    iter: impl Iterator<Item = Result<(&'a str, &'a DisplayInfo, FieldSchema)>>,
 ) -> Result<TelemetrySchema> {
     let mut schema = TelemetrySchema {
         integral_fields: vec![],
         floating_fields: vec![],
     };
     for (order, pair) in iter.enumerate() {
-        let (field_name, field_schema) = pair?;
-        let name_pair = build_field_metadata(order, field_name);
+        let (field_name, display_info, field_schema) = pair?;
+        let name_pair = build_field_metadata(order, field_name, display_info);
         match field_schema {
             FieldSchema::Integral(field_schema) => {
                 schema.integral_fields.push((name_pair, field_schema));
@@ -216,11 +220,16 @@ fn build_telemetry_schema<'a>(
     Ok(schema)
 }
 
-fn build_field_metadata(order: usize, tlmdb_name: &str) -> FieldMetadata {
+fn build_field_metadata(
+    order: usize,
+    tlmdb_name: &str,
+    display_info: &DisplayInfo,
+) -> FieldMetadata {
     FieldMetadata {
         order,
         original_name: tlmdb_name.to_string(),
         converted_name: tlmdb_name.to_string(),
         raw_name: format!("{tlmdb_name}@RAW"),
+        display_format: display_info.format.clone(),
     }
 }

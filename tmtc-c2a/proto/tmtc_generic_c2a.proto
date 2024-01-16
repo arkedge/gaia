@@ -79,6 +79,7 @@ message TelemetryFieldSchema {
 
 message TelemetryFieldSchemaMetadata {
   // TODO: string description = 1;
+  string display_format = 1;
 }
 
 message TelemetryChannelSchema {
