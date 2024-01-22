@@ -46,7 +46,7 @@ interface Driver{
     waitMilliseconds(msecs : number) : Promise<void>;
     resolveVariable(variablePath : string) : Value | undefined;
     setLocalVariable(ident : string, value : Value);
-    get(variablePath : string) : Promise<void>;
+    print(value : Value) : Promise<void>;
 }
 "#;
 
@@ -79,8 +79,8 @@ extern "C" {
     #[wasm_bindgen(method, js_name = "setLocalVariable")]
     pub fn set_local_variable(this: &Driver, ident: &str, value: UnionValue);
 
-    #[wasm_bindgen(catch, method, js_name = "get")]
-    pub async fn get(this: &Driver, variable_path: &str) -> Result<(), JsValue>;
+    #[wasm_bindgen(catch, method, js_name = "print")]
+    pub async fn print(this: &Driver, value: UnionValue) -> Result<(), JsValue>;
 }
 
 #[derive(Debug)]
@@ -495,13 +495,13 @@ impl Runner {
                     .set_local_variable(&l.variable.raw, value.into());
                 Ok(Executed)
             }
-            Print(g) => {
-                unimpl("stmt.print")
-                //self.driver
-                //    .get(&g.variable.raw)
-                //    .await
-                //    .map_err(RuntimeError::JsOriginError)?;
-                //Ok(Executed)
+            Print(p) => {
+                let arg = self.expr(&p.arg)?;
+                self.driver
+                    .print(arg.into())
+                    .await
+                    .map_err(RuntimeError::JsOriginError)?;
+                Ok(Executed)
             }
         }
     }

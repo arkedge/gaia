@@ -274,9 +274,17 @@ class Driver implements opslang.Driver {
     this.localVariables.set(ident, value);
   }
 
-  async get(name: string): Promise<void> {
+  async print(value: opslang.Value): Promise<void> {
+    const toStr = (value: opslang.Value): string => {
+      if (value.kind === "integer") {
+        return String(value.value);
+      } else if (value.kind === "array") {
+        return `[${value.value.map(toStr).join(", ")}]`;
+      }
+      return JSON.stringify(value.value);
+    };
     // TODO: better output
-    console.log(`get ${name} :`, this.resolveVariable(name));
+    console.log(`print: ${toStr(value)}`);
   }
 
   async prepareVariables(variables: string[]): Promise<void> {
