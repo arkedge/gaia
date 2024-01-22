@@ -24,6 +24,7 @@ enum RuntimeError {
     ParseFloatError(std::num::ParseFloatError),
     Unimplemented(&'static str),
     TypeError(&'static str, &'static str),
+    NoOverload(&'static str, &'static str, &'static str),
     CheckValueFailure,
     JsOriginError(JsValue),
     Other(String),
@@ -106,6 +107,12 @@ impl From<bool> for Value {
     }
 }
 
+impl From<chrono::Duration> for Value {
+    fn from(v: chrono::Duration) -> Self {
+        Value::Duration(v)
+    }
+}
+
 impl Value {
     fn type_name(&self) -> &'static str {
         use Value::*;
@@ -120,24 +127,15 @@ impl Value {
     }
 
     fn integer(&self) -> Result<i64> {
-        match self {
-            Value::Integer(x) => Ok(*x),
-            _ => type_err("integer", self),
-        }
+        self.try_into()
     }
 
     fn double(&self) -> Result<f64> {
-        match self {
-            Value::Double(x) => Ok(*x),
-            _ => type_err("double", self),
-        }
+        self.try_into()
     }
 
     fn bool(&self) -> Result<bool> {
-        match self {
-            Value::Bool(x) => Ok(*x),
-            _ => type_err("bool", self),
-        }
+        self.try_into()
     }
 
     fn array(&self) -> Result<&Vec<Value>> {
@@ -155,6 +153,43 @@ impl Value {
     }
 
     fn duration(&self) -> Result<chrono::Duration> {
+        self.try_into()
+    }
+}
+
+impl<'a> TryInto<i64> for &'a Value {
+    type Error = RuntimeError;
+    fn try_into(self) -> Result<i64> {
+        match self {
+            Value::Integer(x) => Ok(*x),
+            _ => type_err("integer", self),
+        }
+    }
+}
+
+impl<'a> TryInto<f64> for &'a Value {
+    type Error = RuntimeError;
+    fn try_into(self) -> Result<f64> {
+        match self {
+            Value::Double(x) => Ok(*x),
+            _ => type_err("double", self),
+        }
+    }
+}
+
+impl TryInto<bool> for &Value {
+    type Error = RuntimeError;
+    fn try_into(self) -> Result<bool> {
+        match self {
+            Value::Bool(x) => Ok(*x),
+            _ => type_err("bool", self),
+        }
+    }
+}
+
+impl TryInto<chrono::Duration> for &Value {
+    type Error = RuntimeError;
+    fn try_into(self) -> Result<chrono::Duration> {
         match self {
             Value::Duration(x) => Ok(*x),
             _ => type_err("duration", self),
@@ -168,6 +203,44 @@ fn type_err<T>(expected: &'static str, e: &Value) -> Result<T> {
 
 fn unimpl<T>(s: &'static str) -> Result<T> {
     Err(RuntimeError::Unimplemented(s))
+}
+
+enum BinopChain {
+    Unresolved(Value, Value),
+    Resolved(Value),
+}
+
+impl BinopChain {
+    fn new(l: Value, r: Value) -> Self {
+        BinopChain::Unresolved(l, r)
+    }
+
+    fn or<L, R>(self, f: impl Fn(L, R) -> Result<Value>) -> Result<Self>
+    where
+        for<'a> &'a Value: TryInto<L>,
+        for<'a> &'a Value: TryInto<R>,
+    {
+        match &self {
+            BinopChain::Unresolved(l, r) => {
+                let l_cast = (l).try_into();
+                let r_cast = (r).try_into();
+                if let (Ok(l), Ok(r)) = (l_cast, r_cast) {
+                    return f(l, r).map(BinopChain::Resolved);
+                }
+                Ok(self)
+            }
+            BinopChain::Resolved(_) => Ok(self),
+        }
+    }
+
+    fn unwrap(self, name: &'static str) -> Result<Value> {
+        match self {
+            BinopChain::Unresolved(l, r) => {
+                Err(RuntimeError::NoOverload(name, l.type_name(), r.type_name()))
+            }
+            BinopChain::Resolved(v) => Ok(v),
+        }
+    }
 }
 
 struct Runner {
@@ -315,36 +388,40 @@ impl Runner {
             If => self.bool_binop(|x, y| x || !y, left, right),
             And => self.bool_binop(bool::min, left, right),
             Or => self.bool_binop(bool::max, left, right),
-            Mul => self.num_binop(
-                |x, y| Ok((x * y).into()),
-                |x, y| Ok((x * y).into()),
-                left,
-                right,
-            ),
-            Div => self.num_binop(
-                |x, y| {
+            Mul => BinopChain::new(self.expr(left)?, self.expr(right)?)
+                .or(|x: i64, y: i64| Ok((x * y).into()))?
+                .or(|x: f64, y: f64| Ok((x * y).into()))?
+                //TODO: safer cast i64 -> i32
+                .or(|x: chrono::Duration, y: i64| Ok((x * (y as i32)).into()))?
+                .or(|x: i64, y: chrono::Duration| Ok((y * (x as i32)).into()))?
+                .unwrap("mul"),
+            Div => BinopChain::new(self.expr(left)?, self.expr(right)?)
+                .or(|x: i64, y: i64| {
                     if y == 0 {
                         Err(RuntimeError::DivideByZero)
                     } else {
                         Ok((x / y).into())
                     }
-                },
-                |x, y| Ok((x / y).into()),
-                left,
-                right,
-            ),
-            Add => self.num_binop(
-                |x, y| Ok((x + y).into()),
-                |x, y| Ok((x + y).into()),
-                left,
-                right,
-            ),
-            Sub => self.num_binop(
-                |x, y| Ok((x - y).into()),
-                |x, y| Ok((x - y).into()),
-                left,
-                right,
-            ),
+                })?
+                .or(|x: f64, y: f64| Ok((x / y).into()))?
+                .or(|x: chrono::Duration, y: i64| {
+                    if y == 0 {
+                        Err(RuntimeError::DivideByZero)
+                    } else {
+                        Ok((x / (y as i32)).into())
+                    }
+                })?
+                .unwrap("div"),
+            Add => BinopChain::new(self.expr(left)?, self.expr(right)?)
+                .or(|x: i64, y: i64| Ok((x + y).into()))?
+                .or(|x: f64, y: f64| Ok((x + y).into()))?
+                .or(|x: chrono::Duration, y: chrono::Duration| Ok((x + y).into()))?
+                .unwrap("add"),
+            Sub => BinopChain::new(self.expr(left)?, self.expr(right)?)
+                .or(|x: i64, y: i64| Ok((x + y).into()))?
+                .or(|x: f64, y: f64| Ok((x + y).into()))?
+                .or(|x: chrono::Duration, y: chrono::Duration| Ok((x + y).into()))?
+                .unwrap("sub"),
             Mod => {
                 let left = self.expr(left)?.integer()?;
                 let right = self.expr(right)?.integer()?;
@@ -363,7 +440,6 @@ impl Runner {
                         "the second operand must have two elements".to_owned(),
                     ));
                 }
-
                 use Value::*;
                 match left {
                     Integer(x) => {
@@ -398,29 +474,6 @@ impl Runner {
         let left = self.expr(left)?.bool()?;
         let right = self.expr(right)?.bool()?;
         Ok(op(left, right).into())
-    }
-
-    fn num_binop(
-        &self,
-        op_i64: impl Fn(i64, i64) -> Result<Value>,
-        op_f64: impl Fn(f64, f64) -> Result<Value>,
-        left: &Expr,
-        right: &Expr,
-    ) -> Result<Value> {
-        use Value::*;
-        let left = self.expr(left)?;
-        match left {
-            Integer(left) => {
-                let right = self.expr(right)?.integer()?;
-                op_i64(left, right)
-            }
-            Double(left) => {
-                let right = self.expr(right)?.double()?;
-                op_f64(left, right)
-            }
-            //TODO: support duration
-            Bool(_) | Array(_) | String(_) | Duration(_) => type_err("numeric", &left),
-        }
     }
 
     fn unop(&self, op: &UnOpKind, e: &Expr) -> Result<Value> {
