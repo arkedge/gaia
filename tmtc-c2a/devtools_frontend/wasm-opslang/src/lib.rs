@@ -43,7 +43,6 @@ interface Driver{
       command: string,
       params: Value[]
     ) : Promise<void>;
-    waitMilliseconds(msecs : number) : Promise<void>;
     resolveVariable(variablePath : string) : Value | undefined;
     setLocalVariable(ident : string, value : Value);
     print(value : Value) : Promise<void>;
@@ -66,10 +65,6 @@ extern "C" {
         args: Vec<UnionValue>,
     ) -> Result<(), JsValue>;
 
-    // これもControlStatusで扱うべきかもしれない
-    #[wasm_bindgen(method, js_name = "waitMilliseconds")]
-    pub async fn wait_milliseconds(this: &Driver, msecs: usize);
-
     // ここをasyncにすると評価がasync再帰になってちょっと面倒
     // スタックマシンにするか？
     #[wasm_bindgen(method, js_name = "resolveVariable")]
@@ -90,6 +85,7 @@ enum Value {
     Bool(bool),
     Array(Vec<Value>),
     String(String),
+    Duration(chrono::Duration),
 }
 
 impl From<i64> for Value {
@@ -119,6 +115,7 @@ impl Value {
             Bool(_) => "bool",
             Array(_) => "array",
             String(_) => "string",
+            Duration(_) => "duration",
         }
     }
 
@@ -156,6 +153,13 @@ impl Value {
             _ => type_err("string", self),
         }
     }
+
+    fn duration(&self) -> Result<chrono::Duration> {
+        match self {
+            Value::Duration(x) => Ok(*x),
+            _ => type_err("duration", self),
+        }
+    }
 }
 
 fn type_err<T>(expected: &'static str, e: &Value) -> Result<T> {
@@ -183,6 +187,61 @@ impl Runner {
         }
     }
 
+    pub fn wait_expr(
+        &self,
+        e: &Expr,
+        evaluated_durations: &mut Vec<Option<chrono::Duration>>,
+        position: usize,
+        elapsed_time: chrono::Duration,
+    ) -> Result<(bool, usize)> {
+        use BinOpKind::*;
+        use Expr::*;
+        match e {
+            BinOp(And, left, right) => {
+                let (left, next_position) =
+                    self.wait_expr(left, evaluated_durations, position, elapsed_time)?;
+                let (right, next_position) =
+                    self.wait_expr(right, evaluated_durations, next_position, elapsed_time)?;
+                Ok((left && right, next_position))
+            }
+            BinOp(Or, left, right) => {
+                let (left, next_position) =
+                    self.wait_expr(left, evaluated_durations, position, elapsed_time)?;
+                let (right, next_position) =
+                    self.wait_expr(right, evaluated_durations, next_position, elapsed_time)?;
+                Ok((left || right, next_position))
+            }
+            BinOp(If, left, right) => {
+                let (left, next_position) =
+                    self.wait_expr(left, evaluated_durations, position, elapsed_time)?;
+                let (right, next_position) =
+                    self.wait_expr(right, evaluated_durations, next_position, elapsed_time)?;
+                Ok((left || !right, next_position))
+            }
+
+            _ => {
+                if evaluated_durations.len() <= position {
+                    evaluated_durations.resize(position + 1, None);
+                }
+                let next_position = position + 1;
+
+                if let Some(duration) = evaluated_durations[position] {
+                    return Ok((duration <= elapsed_time, next_position));
+                }
+
+                let v = self.expr(e)?;
+                match v {
+                    Value::Bool(b) => Ok((b, next_position)),
+                    Value::Duration(d) => {
+                        evaluated_durations[position] = Some(d);
+                        Ok((d <= elapsed_time, next_position))
+                    }
+                    _ => Err(RuntimeError::TypeError("bool or duration", v.type_name())),
+                }
+            }
+        }
+    }
+
     pub fn variable(&self, variable_path: &VariablePath) -> Result<Value> {
         self.driver
             .resolve_variable(&variable_path.raw)
@@ -206,18 +265,17 @@ impl Runner {
                 .map(|e| self.expr(e))
                 .collect::<Result<_, _>>()
                 .map(Value::Array),
-            Numeric(num, None) => self.numeric(num),
-            Numeric(_, Some(_)) => unimpl("lit.numeric_suffix"),
+            Numeric(num, s) => self.numeric(num, s),
             String(s) => Ok(Value::String((*s).to_owned())),
             DateTime(_dt) => unimpl("expr.datetime"),
             TlmId(_tlm_id) => unimpl("expr.tlm_id"),
         }
     }
 
-    fn numeric(&self, num: &Numeric) -> Result<Value> {
+    fn numeric(&self, num: &Numeric, s: &Option<NumericSuffix>) -> Result<Value> {
         use Numeric::*;
         match num {
-            Integer(s, prefix) => {
+            Integer(nums, prefix) => {
                 use IntegerPrefix::*;
                 let base = match prefix {
                     Hexadecimal => 16,
@@ -225,14 +283,28 @@ impl Runner {
                     Octal => 8,
                     Binary => 2,
                 };
-                i64::from_str_radix(s, base)
-                    .map(Value::Integer)
-                    .map_err(RuntimeError::ParseIntError)
+                let v = i64::from_str_radix(nums, base).map_err(RuntimeError::ParseIntError)?;
+
+                match s {
+                    Some(NumericSuffix::Second) => {
+                        let v = chrono::Duration::seconds(v);
+                        Ok(Value::Duration(v))
+                    }
+                    None => Ok(Value::Integer(v)),
+                }
             }
-            Float(s) => s
-                .parse()
-                .map(Value::Double)
-                .map_err(RuntimeError::ParseFloatError),
+            Float(nums) => {
+                let v: f64 = nums.parse().map_err(RuntimeError::ParseFloatError)?;
+
+                match s {
+                    Some(NumericSuffix::Second) => {
+                        let millis = (v * 1000.0) as i64;
+                        let v = chrono::Duration::milliseconds(millis);
+                        Ok(Value::Duration(v))
+                    }
+                    None => Ok(Value::Double(v)),
+                }
+            }
         }
     }
 
@@ -346,7 +418,8 @@ impl Runner {
                 let right = self.expr(right)?.double()?;
                 op_f64(left, right)
             }
-            Bool(_) | Array(_) | String(_) => type_err("numeric", &left),
+            //TODO: support duration
+            Bool(_) | Array(_) | String(_) | Duration(_) => type_err("numeric", &left),
         }
     }
 
@@ -360,6 +433,7 @@ impl Runner {
                     Integer(x) => Ok(Integer(-x)),
                     Double(x) => Ok(Double(-x)),
                     Bool(x) => Ok(Bool(!x)),
+                    Duration(x) => Ok(Duration(-x)),
                     Array(_) | String(_) => type_err("numeric or bool", &v),
                 }
             }
@@ -377,6 +451,7 @@ impl Runner {
             Bool(x) => Some(x.cmp(&right.bool()?)),
             Array(_) => return type_err("comparable", &left),
             String(x) => Some(x[..].cmp(right.string()?)),
+            Duration(x) => Some(x.cmp(&right.duration()?)),
         };
         let ord = match ord {
             Some(ord) => ord,
@@ -421,37 +496,51 @@ impl Runner {
     async fn exec_statement<'bc>(
         &mut self,
         block_context: BlockContext<'bc>,
+        mut context: ExecutionContext,
         stmt: &SingleStatement,
-    ) -> Result<ControlStatus> {
-        use ControlStatus::*;
+        current_time_ms: usize,
+    ) -> Result<ExecutionResult> {
         use SingleStatement::*;
         match stmt {
             Call(_) => unimpl("stmt.call"),
-            Wait(_w) => unimpl("stmt.wait"),
-            //WaitSec(w) => {
-            //    let e = self.expr(&w.sec)?;
-            //    let msecs = match e {
-            //        Value::Integer(n) => n * 1000,
-            //        Value::Double(x) => (x * 1000.0) as _,
-            //        _ => return Err(RuntimeError::TypeError("numeric", e.type_name())),
-            //    };
-            //    if msecs > 0 {
-            //        self.driver.wait_milliseconds(msecs as _).await;
-            //    }
-            //    Ok(Executed)
-            //}
-            //WaitUntil(c) => {
-            //    let cond = self.expr(&c.condition)?;
-            //    match cond {
-            //        Value::Bool(true) => Ok(Executed),
-            //        Value::Bool(false) => Ok(Retry),
-            //        _ => Err(RuntimeError::TypeError("bool", cond.type_name())),
-            //    }
-            //}
+            Wait(c) => {
+                // Wait文の条件式として有効なものは以下の3条件によって帰納的に定義される
+                // 1. bool型に評価される式であって、式のトップレベルの構成子が二項論理演算子でないものは有効
+                // 2. duration型に評価される式は有効
+                // (以上1.2.をAtomic条件式と呼ぶことにする)
+                // 3. E1, E2が共に有効なら、E1とE2を二項論理演算子で繋いだものも有効
+                //
+                //
+                // duration型に評価されるAtomic条件式については、初回呼び出しの際の評価値が記録され、
+                // 「初回呼び出しからの経過時間」が「初回呼び出しの際の評価値」を超える場合に真と評価される
+                // 「初回呼び出しの際の評価値」はExecutionContextのevaluated_durationsに記録され、
+                // そのindexは左から何番目のAtomic条件式であるかを表す
+                // 例えば、
+                //                  1s < 2s && 3s &&  ("A" == "B" || 4s)
+                // を評価するとevaluated_durationsには
+                //                 [None, Some(3s),    None,    Some(4s)]
+                // が記録される
+                // この時 1s < 2s は bool型に評価されるAtomic条件式であってduration型には評価されないことに注意
+
+                //FIXME: what if current_time_ms < context.initial_execution_time_ms?
+                let (cond, _) = self.wait_expr(
+                    &c.condition,
+                    &mut context.evaluated_durations,
+                    0,
+                    chrono::Duration::milliseconds(
+                        (current_time_ms - context.initial_execution_time_ms) as _,
+                    ),
+                )?;
+                if cond {
+                    Ok(ExecutionResult::executed())
+                } else {
+                    Ok(ExecutionResult::retry(context))
+                }
+            }
             Assert(c) => {
                 let cond = self.expr(&c.condition)?;
                 match cond {
-                    Value::Bool(true) => Ok(Executed),
+                    Value::Bool(true) => Ok(ExecutionResult::executed()),
                     Value::Bool(false) => Err(RuntimeError::CheckValueFailure),
                     _ => Err(RuntimeError::TypeError("bool", cond.type_name())),
                 }
@@ -487,13 +576,13 @@ impl Runner {
                 )
                 .await?;
                 //TODO: apply delay
-                Ok(Executed)
+                Ok(ExecutionResult::executed())
             }
             Let(l) => {
                 let value = self.expr(&l.rhs)?;
                 self.driver
                     .set_local_variable(&l.variable.raw, value.into());
-                Ok(Executed)
+                Ok(ExecutionResult::executed())
             }
             Print(p) => {
                 let arg = self.expr(&p.arg)?;
@@ -501,14 +590,14 @@ impl Runner {
                     .print(arg.into())
                     .await
                     .map_err(RuntimeError::JsOriginError)?;
-                Ok(Executed)
+                Ok(ExecutionResult::executed())
             }
         }
     }
 }
 
 #[wasm_bindgen]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub enum ControlStatus {
     // Stopped at a breakpoint
     // Executor (i.e. the caller of `execute_line`) should stop execution, and execute this line
@@ -521,6 +610,51 @@ pub enum ControlStatus {
     // Wait condition is not satisfied
     // Executor should execute this line again
     Retry,
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct ExecutionContext {
+    initial_execution_time_ms: usize,
+    evaluated_durations: Vec<Option<chrono::Duration>>,
+}
+
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct ExecutionResult {
+    pub status: ControlStatus,
+    execution_context: Option<ExecutionContext>,
+}
+
+#[wasm_bindgen]
+impl ExecutionResult {
+    #[wasm_bindgen(getter)]
+    pub fn execution_context(&self) -> Option<ExecutionContext> {
+        self.execution_context.clone()
+    }
+}
+
+impl ExecutionResult {
+    fn breaked() -> Self {
+        ExecutionResult {
+            status: ControlStatus::Breaked,
+            execution_context: None,
+        }
+    }
+
+    fn executed() -> Self {
+        ExecutionResult {
+            status: ControlStatus::Executed,
+            execution_context: None,
+        }
+    }
+
+    fn retry(execution_context: ExecutionContext) -> Self {
+        ExecutionResult {
+            status: ControlStatus::Retry,
+            execution_context: Some(execution_context),
+        }
+    }
 }
 
 //TODO: reimplement this
@@ -574,10 +708,9 @@ impl ParsedCode {
                 row,
             }),
             Statement::Block(block) => {
-                if block.rows.is_empty()  || //Empty block
-                    offset < block.rows[0].span.start  || //Opening brace
-                    offset > block.rows.last().unwrap().span.end
-                // Closing brace
+                if block.rows.is_empty()
+                    || offset < block.rows[0].span.start
+                    || offset > block.rows.last().unwrap().span.end
                 {
                     Some(FoundRow::Empty)
                 } else {
@@ -613,10 +746,18 @@ impl ParsedCode {
     pub async fn execute_line(
         &self,
         driver: Driver,
+        context: Option<ExecutionContext>,
         stop_on_break: bool,
         line_num: usize,
-    ) -> Result<ControlStatus, String> {
-        let result = self.execute_line_(driver, stop_on_break, line_num).await;
+        current_time_ms: usize,
+    ) -> Result<ExecutionResult, String> {
+        let context = context.unwrap_or_else(|| ExecutionContext {
+            initial_execution_time_ms: current_time_ms,
+            evaluated_durations: vec![],
+        });
+        let result = self
+            .execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
+            .await;
         match &result {
             Ok(sc) => {
                 log!("execute_line ok: {:?}", sc);
@@ -631,9 +772,11 @@ impl ParsedCode {
     pub async fn execute_line_(
         &self,
         driver: Driver,
+        context: ExecutionContext,
         stop_on_break: bool,
         line_num: usize,
-    ) -> Result<ControlStatus, String> {
+        current_time_ms: usize,
+    ) -> Result<ExecutionResult, String> {
         let mut runner = Runner { driver };
 
         let found_row = self
@@ -641,20 +784,20 @@ impl ParsedCode {
             .ok_or_else(|| format!("line {} not found", line_num))?;
 
         let (block_context, row) = match found_row {
-            FoundRow::Empty => return Ok(ControlStatus::Executed),
+            FoundRow::Empty => return Ok(ExecutionResult::executed()),
             FoundRow::RowWithContext { block_context, row } => (block_context, row),
         };
 
         if row.breaks.is_some() && stop_on_break {
-            return Ok(ControlStatus::Breaked);
+            return Ok(ExecutionResult::breaked());
         }
         if let Some(stmt) = &row.content {
             runner
-                .exec_statement(block_context, stmt)
+                .exec_statement(block_context, context, stmt, current_time_ms)
                 .await
                 .map_err(|e| format!("{:?}", e))
         } else {
-            Ok(ControlStatus::Executed)
+            Ok(ExecutionResult::executed())
         }
     }
 

@@ -10,7 +10,7 @@ import {
 import { Tco, TcoParam, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
 import { GrpcClientService } from "../worker";
-import init, * as opslang from "../../wasm-opslang/pkg";
+import initOpslang, * as opslang from "../../wasm-opslang/pkg";
 
 type ParameterValue =
   | { type: "bytes"; bytes: Uint8Array; bigint: bigint }
@@ -242,10 +242,6 @@ class Driver implements opslang.Driver {
     });
   }
 
-  async waitMilliseconds(msecs: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(() => resolve(), msecs));
-  }
-
   resolveVariable(name: string): opslang.Value | undefined {
     const local = this.localVariables.get(name);
     if (local !== undefined) {
@@ -280,6 +276,8 @@ class Driver implements opslang.Driver {
         return String(value.value);
       } else if (value.kind === "array") {
         return `[${value.value.map(toStr).join(", ")}]`;
+      } else if (value.kind === "duration") {
+        return `${value.value}ms`;
       }
       return JSON.stringify(value.value);
     };
@@ -318,7 +316,8 @@ export const CommandView: React.FC = () => {
   useEffect(() => {
     (async () => {
       // init opslang
-      await init();
+      await initOpslang();
+      opslang.set_panic_hook();
     })();
   }, []);
   const {
@@ -396,52 +395,51 @@ export const CommandView: React.FC = () => {
       };
 
       type ExecuteLineResult =
-        | { success: true; status: opslang.ControlStatus }
+        | {
+            success: true;
+            status: opslang.ControlStatus;
+            executionContext: opslang.ExecutionContext | undefined;
+          }
         | { success: false; error: unknown };
-      const executeLine = async (
-        line: string,
-        isFirstLine: boolean,
-      ): Promise<ExecuteLineResult> => {
-        try {
-          await driver.prepareVariables(opslang.freeVariables(line));
-          const status = await opslang.executeLine(driver, line, !isFirstLine);
-          return { success: true, status };
-        } catch (error) {
-          return { success: false, error };
-        }
-      };
 
       const executeLineParsed = async (
         parsed: opslang.ParsedCode,
+        context: opslang.ExecutionContext | undefined,
         lineNum: number,
         isFirstLine: boolean,
       ): Promise<ExecuteLineResult> => {
         try {
           await driver.prepareVariables(parsed.freeVariables(lineNum));
-          const status = await parsed.executeLine(
+          const result = await parsed.executeLine(
             driver,
+            context,
             !isFirstLine,
             lineNum,
+            Date.now(),
           );
-          return { success: true, status };
+          const status = result.status;
+          const executionContext = result.execution_context;
+          result.free();
+          return { success: true, status, executionContext };
         } catch (error) {
           return { success: false, error };
         }
       };
 
       const processLine = async (
-        firstLine: number,
+        initialLine: number,
         parsed: opslang.ParsedCode,
-      ): Promise<boolean> => {
+        executionContext: opslang.ExecutionContext | undefined,
+      ): Promise<[boolean, opslang.ExecutionContext | undefined]> => {
         const model = editor.getModel();
         if (model === null) {
-          return false;
+          return [false, executionContext];
         }
         localStorage.setItem("c2a-devtools-ops-v1", editor.getValue());
 
         const position = editor.getPosition();
         if (position === null) {
-          return false;
+          return [false, executionContext];
         }
         const lineno = position.lineNumber;
 
@@ -460,10 +458,13 @@ export const CommandView: React.FC = () => {
           },
         ]);
 
+        // executionContext will be "moved" here
+        // executionContext cannot be used after this call
         const result = await executeLineParsed(
           parsed,
+          executionContext,
           lineno,
-          lineno == firstLine,
+          lineno == initialLine,
         );
         if (!result.success) {
           decoration.clear();
@@ -488,10 +489,11 @@ export const CommandView: React.FC = () => {
               endColumn: model.getLineLength(lineno) + 1,
             },
           ]);
-          return false;
+          return [false, undefined];
         }
+
         if (result.status === opslang.ControlStatus.Breaked) {
-          return false;
+          return [false, result.executionContext];
         }
         if (result.status === opslang.ControlStatus.Executed) {
           decoration.clear();
@@ -507,7 +509,7 @@ export const CommandView: React.FC = () => {
             },
           ]);
           if (lineno >= model.getLineCount()) {
-            return false;
+            return [false, result.executionContext];
           }
           const nextPosition = new monaco.Position(lineno + 1, 1);
           editor.setPosition(nextPosition);
@@ -515,7 +517,7 @@ export const CommandView: React.FC = () => {
         }
         const delay = new Promise((resolve) => setTimeout(resolve, 250));
         await delay;
-        return true;
+        return [true, result.executionContext];
       };
 
       editor.addCommand(
@@ -526,9 +528,22 @@ export const CommandView: React.FC = () => {
             return;
           }
           const parsed = opslang.ParsedCode.fromCode(editor.getValue());
-          const firstLine = position.lineNumber;
-          while (await processLine(firstLine, parsed)) {
-            /* do nothing */
+          const initialLine = position.lineNumber;
+          let executionContext: opslang.ExecutionContext | undefined =
+            undefined;
+
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const [cont, nextExecutionContext] = await processLine(
+              initialLine,
+              parsed,
+              executionContext,
+            );
+            executionContext = nextExecutionContext;
+            if (!cont) {
+              executionContext?.free();
+              break;
+            }
           }
           parsed.free();
         },

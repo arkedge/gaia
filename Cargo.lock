@@ -1142,6 +1142,7 @@ version = "0.1.0"
 source = "git+ssh://git@github.com/arkedge/opslang?branch=syntax_v1#0f3b67ea6b9ed30a4fa2447b05cabea494bcaad7"
 dependencies = [
  "anyhow",
+ "chrono",
  "peg",
  "thiserror",
 ]
@@ -2655,6 +2656,7 @@ name = "wasm-opslang"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
+ "chrono",
  "console_error_panic_hook",
  "opslang-syn",
  "wasm-bindgen",

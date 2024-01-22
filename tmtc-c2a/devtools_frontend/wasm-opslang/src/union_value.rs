@@ -6,7 +6,8 @@ type Value =
   {kind : "double", value : number} |
   {kind : "bool", value : boolean } |
   {kind: "array", value : Value[] } |
-  {kind: "string", value: string }
+  {kind: "string", value: string } |
+  {kind: "duration", value: number }
 "#;
 
 #[wasm_bindgen(module = "/js/union.js")]
@@ -24,6 +25,8 @@ extern "C" {
     fn as_array(_: &UnionValue) -> Option<Vec<UnionValue>>;
     #[wasm_bindgen(js_name = "asString")]
     fn as_string(_: &UnionValue) -> Option<std::string::String>;
+    #[wasm_bindgen(js_name = "asDuration")]
+    fn as_duration(_: &UnionValue) -> Option<i64>;
 
     #[wasm_bindgen(js_name = "makeInt")]
     fn make_int(_: i64) -> UnionValue;
@@ -35,6 +38,8 @@ extern "C" {
     fn make_array(_: Vec<UnionValue>) -> UnionValue;
     #[wasm_bindgen(js_name = "makeString")]
     fn make_string(_: std::string::String) -> UnionValue;
+    #[wasm_bindgen(js_name = "makeDuration")]
+    fn make_duration(_: i64) -> UnionValue;
 }
 
 use crate::Value;
@@ -53,6 +58,8 @@ impl From<UnionValue> for Value {
             Array(vs)
         } else if let Some(v) = as_string(&v) {
             String(v)
+        } else if let Some(v) = as_duration(&v) {
+            Duration(chrono::Duration::milliseconds(v))
         } else {
             unreachable!()
         }
@@ -70,6 +77,7 @@ impl From<Value> for UnionValue {
                 make_array(vs)
             }
             String(v) => make_string(v),
+            Duration(v) => make_duration(v.num_milliseconds()),
         }
     }
 }
