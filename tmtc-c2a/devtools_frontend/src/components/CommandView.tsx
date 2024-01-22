@@ -226,6 +226,13 @@ class Driver implements opslang.Driver {
             type: "double",
             double: arg.value,
           };
+        } else if (arg.kind === "datetime") {
+          const epoch_millis = arg.value;
+          const t = Number(epoch_millis / BigInt(100));
+          return {
+            type: "integer",
+            integer: t,
+          };
         } else {
           throw new Error(`cannot convert ${arg.kind}`);
         }
@@ -278,6 +285,9 @@ class Driver implements opslang.Driver {
         return `[${value.value.map(toStr).join(", ")}]`;
       } else if (value.kind === "duration") {
         return `${value.value}ms`;
+      } else if (value.kind === "datetime") {
+        const d = new Date(Number(value.value));
+        return d.toISOString();
       }
       return JSON.stringify(value.value);
     };

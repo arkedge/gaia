@@ -87,6 +87,7 @@ enum Value {
     Array(Vec<Value>),
     String(String),
     Duration(chrono::Duration),
+    DateTime(chrono::DateTime<chrono::Utc>),
 }
 
 impl From<i64> for Value {
@@ -113,6 +114,12 @@ impl From<chrono::Duration> for Value {
     }
 }
 
+impl From<chrono::DateTime<chrono::Utc>> for Value {
+    fn from(v: chrono::DateTime<chrono::Utc>) -> Self {
+        Value::DateTime(v)
+    }
+}
+
 impl Value {
     fn type_name(&self) -> &'static str {
         use Value::*;
@@ -123,6 +130,7 @@ impl Value {
             Array(_) => "array",
             String(_) => "string",
             Duration(_) => "duration",
+            DateTime(_) => "datetime",
         }
     }
 
@@ -153,6 +161,10 @@ impl Value {
     }
 
     fn duration(&self) -> Result<chrono::Duration> {
+        self.try_into()
+    }
+
+    fn datetime(&self) -> Result<chrono::DateTime<chrono::Utc>> {
         self.try_into()
     }
 }
@@ -192,6 +204,16 @@ impl TryInto<chrono::Duration> for &Value {
     fn try_into(self) -> Result<chrono::Duration> {
         match self {
             Value::Duration(x) => Ok(*x),
+            _ => type_err("duration", self),
+        }
+    }
+}
+
+impl TryInto<chrono::DateTime<chrono::Utc>> for &Value {
+    type Error = RuntimeError;
+    fn try_into(self) -> Result<chrono::DateTime<chrono::Utc>> {
+        match self {
+            Value::DateTime(x) => Ok(*x),
             _ => type_err("duration", self),
         }
     }
@@ -340,7 +362,7 @@ impl Runner {
                 .map(Value::Array),
             Numeric(num, s) => self.numeric(num, s),
             String(s) => Ok(Value::String((*s).to_owned())),
-            DateTime(_dt) => unimpl("expr.datetime"),
+            DateTime(d) => Ok(Value::DateTime(*d)),
             TlmId(_tlm_id) => unimpl("expr.tlm_id"),
         }
     }
@@ -416,11 +438,18 @@ impl Runner {
                 .or(|x: i64, y: i64| Ok((x + y).into()))?
                 .or(|x: f64, y: f64| Ok((x + y).into()))?
                 .or(|x: chrono::Duration, y: chrono::Duration| Ok((x + y).into()))?
+                .or(|x: chrono::DateTime<chrono::Utc>, y: chrono::Duration| Ok((x + y).into()))?
                 .unwrap("add"),
             Sub => BinopChain::new(self.expr(left)?, self.expr(right)?)
-                .or(|x: i64, y: i64| Ok((x + y).into()))?
-                .or(|x: f64, y: f64| Ok((x + y).into()))?
-                .or(|x: chrono::Duration, y: chrono::Duration| Ok((x + y).into()))?
+                .or(|x: i64, y: i64| Ok((x - y).into()))?
+                .or(|x: f64, y: f64| Ok((x - y).into()))?
+                .or(|x: chrono::Duration, y: chrono::Duration| Ok((x - y).into()))?
+                .or(|x: chrono::DateTime<chrono::Utc>, y: chrono::Duration| Ok((x - y).into()))?
+                .or(
+                    |x: chrono::DateTime<chrono::Utc>, y: chrono::DateTime<chrono::Utc>| {
+                        Ok((x - y).into())
+                    },
+                )?
                 .unwrap("sub"),
             Mod => {
                 let left = self.expr(left)?.integer()?;
@@ -487,7 +516,9 @@ impl Runner {
                     Double(x) => Ok(Double(-x)),
                     Bool(x) => Ok(Bool(!x)),
                     Duration(x) => Ok(Duration(-x)),
-                    Array(_) | String(_) => type_err("numeric or bool", &v),
+                    Array(_) | String(_) | DateTime(_) => {
+                        type_err("numeric, bool, or duration", &v)
+                    }
                 }
             }
         }
@@ -505,6 +536,7 @@ impl Runner {
             Array(_) => return type_err("comparable", &left),
             String(x) => Some(x[..].cmp(right.string()?)),
             Duration(x) => Some(x.cmp(&right.duration()?)),
+            DateTime(x) => Some(x.cmp(&right.datetime()?)),
         };
         let ord = match ord {
             Some(ord) => ord,

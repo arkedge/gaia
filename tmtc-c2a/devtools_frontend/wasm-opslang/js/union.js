@@ -14,6 +14,7 @@ export const asBool = asKind("bool");
 export const asArray = asKind("array");
 export const asString = asKind("string");
 export const asDuration = asKind("duration");
+export const asDateTime = asKind("datetime");
 
 const make = (kind) => {
   return (value) => {
@@ -30,3 +31,4 @@ export const makeBool = make("bool");
 export const makeArray = make("array");
 export const makeString = make("string");
 export const makeDuration = make("duration");
+export const makeDateTime = make("datetime");

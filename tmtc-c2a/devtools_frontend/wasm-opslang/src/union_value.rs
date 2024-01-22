@@ -7,7 +7,8 @@ type Value =
   {kind : "bool", value : boolean } |
   {kind: "array", value : Value[] } |
   {kind: "string", value: string } |
-  {kind: "duration", value: number }
+  {kind: "duration", value: bigint } |
+  {kind: "datetime", value: bigint }
 "#;
 
 #[wasm_bindgen(module = "/js/union.js")]
@@ -27,6 +28,8 @@ extern "C" {
     fn as_string(_: &UnionValue) -> Option<std::string::String>;
     #[wasm_bindgen(js_name = "asDuration")]
     fn as_duration(_: &UnionValue) -> Option<i64>;
+    #[wasm_bindgen(js_name = "asDateTime")]
+    fn as_datetime(_: &UnionValue) -> Option<i64>;
 
     #[wasm_bindgen(js_name = "makeInt")]
     fn make_int(_: i64) -> UnionValue;
@@ -40,6 +43,8 @@ extern "C" {
     fn make_string(_: std::string::String) -> UnionValue;
     #[wasm_bindgen(js_name = "makeDuration")]
     fn make_duration(_: i64) -> UnionValue;
+    #[wasm_bindgen(js_name = "makeDateTime")]
+    fn make_datetime(_: i64) -> UnionValue;
 }
 
 use crate::Value;
@@ -60,6 +65,8 @@ impl From<UnionValue> for Value {
             String(v)
         } else if let Some(v) = as_duration(&v) {
             Duration(chrono::Duration::milliseconds(v))
+        } else if let Some(v) = as_datetime(&v) {
+            DateTime(chrono::DateTime::UNIX_EPOCH + chrono::Duration::milliseconds(v))
         } else {
             unreachable!()
         }
@@ -78,6 +85,7 @@ impl From<Value> for UnionValue {
             }
             String(v) => make_string(v),
             Duration(v) => make_duration(v.num_milliseconds()),
+            DateTime(v) => make_datetime(v.timestamp_millis()),
         }
     }
 }
