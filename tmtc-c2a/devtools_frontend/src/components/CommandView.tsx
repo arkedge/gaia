@@ -406,7 +406,7 @@ export const CommandView: React.FC = () => {
     (editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
       editorRef.current = editor;
 
-      const defaultValue = localStorage.getItem("c2a-devtools-ops-v1");
+      const defaultValue = localStorage.getItem("c2a-devtools-ops-v2");
       if (defaultValue !== null) {
         editor.setValue(defaultValue);
       }
@@ -471,7 +471,7 @@ export const CommandView: React.FC = () => {
         if (model === null) {
           return [false, executionContext];
         }
-        localStorage.setItem("c2a-devtools-ops-v1", editor.getValue());
+        localStorage.setItem("c2a-devtools-ops-v2", editor.getValue());
 
         const position = editor.getPosition();
         if (position === null) {
