@@ -25,7 +25,7 @@ enum RuntimeError {
     Unimplemented(&'static str),
     TypeError(&'static str, &'static str),
     NoOverload(&'static str, &'static str, &'static str),
-    CheckValueFailure,
+    AssertFailure,
     JsOriginError(JsValue),
     UnknownParamName,
     UnknownTelemetryId,
@@ -540,21 +540,25 @@ impl Runner {
         }
     }
 
-    fn compare(&self, comp_op: &CompareBinOpKind, left: &Expr, right: &Expr) -> Result<Value> {
-        let left = self.expr(left)?;
-        let right = self.expr(right)?;
-
+    fn compare_values(left: &Value, right: &Value) -> Result<Option<std::cmp::Ordering>> {
         use Value::*;
         let ord = match left {
             Integer(x) => Some(x.cmp(&right.integer()?)),
             Double(x) => x.partial_cmp(&right.double()?),
             Bool(x) => Some(x.cmp(&right.bool()?)),
-            Array(_) => return type_err("comparable", &left),
+            Array(_) => return type_err("comparable", left),
             String(x) => Some(x[..].cmp(right.string()?)),
             Duration(x) => Some(x.cmp(&right.duration()?)),
             DateTime(x) => Some(x.cmp(&right.datetime()?)),
         };
-        let ord = match ord {
+        Ok(ord)
+    }
+
+    fn compare(&self, comp_op: &CompareBinOpKind, left: &Expr, right: &Expr) -> Result<Value> {
+        let left = self.expr(left)?;
+        let right = self.expr(right)?;
+
+        let ord = match Self::compare_values(&left, &right)? {
             Some(ord) => ord,
             None => return Ok(false.into()),
         };
@@ -642,11 +646,28 @@ impl Runner {
                 let cond = self.expr(&c.condition)?;
                 match cond {
                     Value::Bool(true) => Ok(ExecutionResult::executed()),
-                    Value::Bool(false) => Err(RuntimeError::CheckValueFailure),
+                    Value::Bool(false) => Err(RuntimeError::AssertFailure),
                     _ => Err(RuntimeError::TypeError("bool", cond.type_name())),
                 }
             }
-            AssertEq(_a) => unimpl("stmt.assert_eq"),
+            AssertEq(a) => {
+                let l = self.expr(&a.left)?;
+                let r = self.expr(&a.right)?;
+                if let Some(tolerance) = &a.tolerance {
+                    let l = l.double()?;
+                    let r = r.double()?;
+                    let tolerance = self.expr(tolerance)?.double()?;
+                    if (l - r).abs() <= tolerance {
+                        Ok(ExecutionResult::executed())
+                    } else {
+                        Err(RuntimeError::AssertFailure)
+                    }
+                } else if Self::compare_values(&l, &r)? == Some(std::cmp::Ordering::Equal) {
+                    Ok(ExecutionResult::executed())
+                } else {
+                    Err(RuntimeError::AssertFailure)
+                }
+            }
             Command(command) => {
                 let receiver = command
                     .destination
