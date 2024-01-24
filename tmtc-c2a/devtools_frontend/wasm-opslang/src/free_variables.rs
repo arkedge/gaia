@@ -35,6 +35,7 @@ impl<'bound> Scanner<'bound> {
             }
             Let(l) => self.expr(&l.rhs),
             Print(p) => self.expr(&p.arg),
+            Set(p) => self.expr(&p.expr),
         }
     }
 

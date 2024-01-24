@@ -179,6 +179,8 @@ class Driver implements opslang.Driver {
   client: GrpcClientService;
   localVariables: Map<string, opslang.Value> = new Map();
   tlmVariables: Map<string, opslang.Value> = new Map();
+  params: Map<string, opslang.Value> = new Map();
+  datetimeOrigin: bigint | undefined = undefined;
 
   constructor(
     commandPrefixes: { [key: string]: CommandPrefixSchema },
@@ -191,7 +193,10 @@ class Driver implements opslang.Driver {
     this.telemetryComponents = telemetryComponents;
     this.client = client;
   }
-  //sendCommand(receiver : string, executor : string | null, timeIndicator : Value | null, commandName : string, args: Value[]) : Promise<void>;
+  setDatetimeOrigin(origin: bigint) {
+    console.log(`set datetime origin: ${origin}`);
+    this.datetimeOrigin = origin;
+  }
   async sendCommand(
     prefix: string,
     component: string,
@@ -227,11 +232,14 @@ class Driver implements opslang.Driver {
             double: arg.value,
           };
         } else if (arg.kind === "datetime") {
-          const epoch_millis = arg.value;
-          const t = Number(epoch_millis / BigInt(100));
+          if (this.datetimeOrigin === undefined) {
+            throw new Error(`datetime origin is not set`);
+          }
+          const millis_since_origin = arg.value - this.datetimeOrigin;
+          const ti = Number(millis_since_origin / BigInt(100));
           return {
             type: "integer",
-            integer: t,
+            integer: ti,
           };
         } else {
           throw new Error(`cannot convert ${arg.kind}`);

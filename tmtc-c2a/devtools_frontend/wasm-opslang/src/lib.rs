@@ -27,6 +27,7 @@ enum RuntimeError {
     NoOverload(&'static str, &'static str, &'static str),
     CheckValueFailure,
     JsOriginError(JsValue),
+    UnknownParamName,
     Other(String),
     DivideByZero,
 }
@@ -46,6 +47,7 @@ interface Driver{
     ) : Promise<void>;
     resolveVariable(variablePath : string) : Value | undefined;
     setLocalVariable(ident : string, value : Value);
+    setDatetimeOrigin(originEpochms: bigint);
     print(value : Value) : Promise<void>;
 }
 "#;
@@ -74,6 +76,9 @@ extern "C" {
     // mutableな状態管理はExecutor側に任せることにする
     #[wasm_bindgen(method, js_name = "setLocalVariable")]
     pub fn set_local_variable(this: &Driver, ident: &str, value: UnionValue);
+
+    #[wasm_bindgen(method, js_name = "setDatetimeOrigin")]
+    pub fn set_datetime_origin(this: &Driver, origin_epoch_ms: i64);
 
     #[wasm_bindgen(catch, method, js_name = "print")]
     pub async fn print(this: &Driver, value: UnionValue) -> Result<(), JsValue>;
@@ -668,6 +673,17 @@ impl Runner {
                 self.driver
                     .set_local_variable(&l.variable.raw, value.into());
                 Ok(ExecutionResult::executed())
+            }
+            Set(s) => {
+                let name = &s.name.raw;
+                if name == "DATETIME_ORIGIN" {
+                    let value = self.expr(&s.expr)?;
+                    let datetime = value.datetime()?;
+                    self.driver.set_datetime_origin(datetime.timestamp_millis());
+                    Ok(ExecutionResult::executed())
+                } else {
+                    Err(RuntimeError::UnknownParamName)
+                }
             }
             Print(p) => {
                 let arg = self.expr(&p.arg)?;
