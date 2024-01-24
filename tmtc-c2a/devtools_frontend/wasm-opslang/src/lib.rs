@@ -28,6 +28,7 @@ enum RuntimeError {
     CheckValueFailure,
     JsOriginError(JsValue),
     UnknownParamName,
+    UnknownTelemetryId,
     Other(String),
     DivideByZero,
 }
@@ -49,6 +50,7 @@ interface Driver{
     setLocalVariable(ident : string, value : Value);
     setDatetimeOrigin(originEpochms: bigint);
     print(value : Value) : Promise<void>;
+    getTelemetryId(tlmPath : string) : bigint | undefined;
 }
 "#;
 
@@ -79,6 +81,9 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = "setDatetimeOrigin")]
     pub fn set_datetime_origin(this: &Driver, origin_epoch_ms: i64);
+
+    #[wasm_bindgen(method, js_name = "getTelemetryId")]
+    pub fn get_telemetry_id(this: &Driver, tlm_path: &str) -> Option<i64>;
 
     #[wasm_bindgen(catch, method, js_name = "print")]
     pub async fn print(this: &Driver, value: UnionValue) -> Result<(), JsValue>;
@@ -368,7 +373,13 @@ impl Runner {
             Numeric(num, s) => self.numeric(num, s),
             String(s) => Ok(Value::String((*s).to_owned())),
             DateTime(d) => Ok(Value::DateTime(*d)),
-            TlmId(_tlm_id) => unimpl("expr.tlm_id"),
+            TlmId(tlm_id) => {
+                if let Some(tlmid) = self.driver.get_telemetry_id(tlm_id.as_str()) {
+                    Ok(Value::Integer(tlmid))
+                } else {
+                    Err(RuntimeError::UnknownTelemetryId)
+                }
+            }
         }
     }
 

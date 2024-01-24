@@ -285,6 +285,24 @@ class Driver implements opslang.Driver {
     this.localVariables.set(ident, value);
   }
 
+  getTelemetryId(name: string): bigint | undefined {
+    const re = new RegExp("([^.]*)\\.([^.]*)");
+    const matches = re.exec(name);
+    if (matches === null) {
+      return undefined;
+    }
+    const componentName = matches[1] as string;
+    const telemetryName = matches[2] as string;
+    const component = this.telemetryComponents[componentName];
+    const telemetry = component?.telemetries[telemetryName];
+    const id = telemetry?.metadata?.id;
+    if (id === undefined) {
+      return undefined;
+    } else {
+      return BigInt(id);
+    }
+  }
+
   async print(value: opslang.Value): Promise<void> {
     const toStr = (value: opslang.Value): string => {
       if (value.kind === "integer") {
