@@ -434,6 +434,7 @@ export const CommandView: React.FC = () => {
         | {
             success: true;
             status: opslang.ControlStatus;
+            requestedDelay: number;
             executionContext: opslang.ExecutionContext | undefined;
           }
         | { success: false; error: unknown };
@@ -455,8 +456,9 @@ export const CommandView: React.FC = () => {
           );
           const status = result.status;
           const executionContext = result.execution_context;
+          const requestedDelay = result.requestedDelay;
           result.free();
-          return { success: true, status, executionContext };
+          return { success: true, status, requestedDelay, executionContext };
         } catch (error) {
           return { success: false, error };
         }
@@ -528,6 +530,12 @@ export const CommandView: React.FC = () => {
           return [false, undefined];
         }
 
+        const delayLength = Math.max(result.requestedDelay, 250);
+        const delay = new Promise((resolve) =>
+          setTimeout(resolve, delayLength),
+        );
+        await delay;
+
         if (result.status === opslang.ControlStatus.Breaked) {
           return [false, result.executionContext];
         }
@@ -551,8 +559,6 @@ export const CommandView: React.FC = () => {
           editor.setPosition(nextPosition);
           editor.revealLine(lineno + 1);
         }
-        const delay = new Promise((resolve) => setTimeout(resolve, 250));
-        await delay;
         return [true, result.executionContext];
       };
 

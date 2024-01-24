@@ -697,8 +697,15 @@ impl Runner {
                     args?,
                 )
                 .await?;
-                //TODO: apply delay
-                Ok(ExecutionResult::executed())
+
+                //TODO: 毎回評価せず、ブロックの最初のstatementを実行する前に評価する
+                let delay = if let Some(delay) = block_context.delay {
+                    let delay = self.expr(delay)?.duration()?;
+                    delay.num_milliseconds() as usize
+                } else {
+                    0
+                };
+                Ok(ExecutionResult::executed().request_delay(delay))
             }
             Let(l) => {
                 let value = self.expr(&l.rhs)?;
@@ -756,6 +763,8 @@ pub struct ExecutionContext {
 #[derive(Debug)]
 pub struct ExecutionResult {
     pub status: ControlStatus,
+    #[wasm_bindgen(js_name = "requestedDelay")]
+    pub requested_delay: usize,
     execution_context: Option<ExecutionContext>,
 }
 
@@ -771,6 +780,7 @@ impl ExecutionResult {
     fn breaked() -> Self {
         ExecutionResult {
             status: ControlStatus::Breaked,
+            requested_delay: 0,
             execution_context: None,
         }
     }
@@ -778,6 +788,7 @@ impl ExecutionResult {
     fn executed() -> Self {
         ExecutionResult {
             status: ControlStatus::Executed,
+            requested_delay: 0,
             execution_context: None,
         }
     }
@@ -785,8 +796,14 @@ impl ExecutionResult {
     fn retry(execution_context: ExecutionContext) -> Self {
         ExecutionResult {
             status: ControlStatus::Retry,
+            requested_delay: 0,
             execution_context: Some(execution_context),
         }
+    }
+
+    fn request_delay(mut self, delay: usize) -> Self {
+        self.requested_delay = delay;
+        self
     }
 }
 
@@ -888,7 +905,7 @@ impl ParsedCode {
             initial_execution_time_ms: current_time_ms,
             evaluated_durations: vec![],
         });
-        let result = self
+        let mut result = self
             .execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
             .await;
         match &result {
