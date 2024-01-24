@@ -208,7 +208,7 @@ class Driver implements opslang.Driver {
     if (timeIndicator !== undefined) {
       tiParam.push(timeIndicator);
     }
-    const fullParams = tiParam.concat(params);
+    const fullParams = params.concat(tiParam);
     const commandLine: CommandLine = {
       command: {
         prefix,
