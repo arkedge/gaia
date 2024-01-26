@@ -10,7 +10,7 @@ import {
 import { Tco, TcoParam, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
 import { GrpcClientService } from "../worker";
-import initOpslang, * as opslang from "../../wasm-opslang/pkg";
+import initOpslang, * as opslang from "@crate/wasm-opslang/pkg";
 
 type ParameterValue =
   | { type: "bytes"; bytes: Uint8Array; bigint: bigint }
