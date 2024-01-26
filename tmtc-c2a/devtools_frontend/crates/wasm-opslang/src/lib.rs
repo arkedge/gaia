@@ -1,6 +1,5 @@
 use opslang_syn::typedef::*;
 use wasm_bindgen::prelude::*;
-use web_sys::js_sys;
 
 mod free_variables;
 mod union_value;
@@ -12,6 +11,7 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
+#[allow(unused_macros)]
 macro_rules! log {
     ( $( $t:tt )* ) => {
         web_sys::console::log_1(&format!( $( $t )* ).into());
@@ -905,18 +905,8 @@ impl ParsedCode {
             initial_execution_time_ms: current_time_ms,
             evaluated_durations: vec![],
         });
-        let mut result = self
-            .execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
-            .await;
-        match &result {
-            Ok(sc) => {
-                log!("execute_line ok: {:?}", sc);
-            }
-            Err(e) => {
-                log!("execute_line err: {}", e);
-            }
-        };
-        result
+        self.execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
+            .await
     }
 
     pub async fn execute_line_(

@@ -89,30 +89,3 @@ impl From<Value> for UnionValue {
         }
     }
 }
-
-macro_rules! log {
-    ( $( $t:tt )* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
-    }
-}
-
-//not tested
-pub(crate) fn from_jsvalue(v: JsValue) -> Option<Value> {
-    use crate::js_sys::Reflect;
-    let kind = Reflect::get(&v, &JsValue::from_str("kind"))
-        .ok()?
-        .as_string()?;
-    let value = Reflect::get(&v, &JsValue::from_str("value")).ok()?;
-    if kind == "double" {
-        value.as_f64().map(Value::Double)
-    } else if kind == "bool" {
-        value.as_bool().map(Value::Bool)
-    } else if kind == "array" {
-        todo!("from_jsvalue: array")
-    } else if kind == "string" {
-        todo!("from_jsvalue: string")
-    } else {
-        log!("{:?}", value);
-        None
-    }
-}
