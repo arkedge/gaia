@@ -376,14 +376,15 @@ export const CommandView: React.FC = () => {
     [commandPrefixes, commandComponents, telemetryComponents, client],
   );
 
-  //TODO: rewrite this
   const validate = useCallback(
     (monaco: Monaco, model: monaco.editor.ITextModel) => {
       const markers: monaco.editor.IMarkerData[] = [];
       for (let lineno = 1; lineno <= model.getLineCount(); lineno++) {
-        const line = model.getLineContent(lineno);
         try {
-          opslang.validateLine(line, lineno);
+          // TODO: rewrite validation
+          // line-wise validation may not be possible
+          // const line = model.getLineContent(lineno);
+          // opslang.validateLine(line, lineno);
         } catch (e) {
           const lineLength = model.getLineLength(lineno);
           markers.push({
@@ -435,13 +436,13 @@ export const CommandView: React.FC = () => {
             success: true;
             status: opslang.ControlStatus;
             requestedDelay: number;
-            executionContext: opslang.ExecutionContext | undefined;
+            executionContext: opslang.StatementExecutionContext | undefined;
           }
         | { success: false; error: unknown };
 
       const executeLineParsed = async (
         parsed: opslang.ParsedCode,
-        context: opslang.ExecutionContext | undefined,
+        context: opslang.StatementExecutionContext | undefined,
         lineNum: number,
         isFirstLine: boolean,
       ): Promise<ExecuteLineResult> => {
@@ -467,8 +468,8 @@ export const CommandView: React.FC = () => {
       const processLine = async (
         initialLine: number,
         parsed: opslang.ParsedCode,
-        executionContext: opslang.ExecutionContext | undefined,
-      ): Promise<[boolean, opslang.ExecutionContext | undefined]> => {
+        executionContext: opslang.StatementExecutionContext | undefined,
+      ): Promise<[boolean, opslang.StatementExecutionContext | undefined]> => {
         const model = editor.getModel();
         if (model === null) {
           return [false, executionContext];
@@ -571,17 +572,17 @@ export const CommandView: React.FC = () => {
           }
           const parsed = opslang.ParsedCode.fromCode(editor.getValue());
           const initialLine = position.lineNumber;
-          let executionContext: opslang.ExecutionContext | undefined =
+          let executionContext: opslang.StatementExecutionContext | undefined =
             undefined;
 
           // eslint-disable-next-line no-constant-condition
           while (true) {
-            const [cont, nextExecutionContext] = await processLine(
+            const [cont, nextStatementExecutionContext] = await processLine(
               initialLine,
               parsed,
               executionContext,
             );
-            executionContext = nextExecutionContext;
+            executionContext = nextStatementExecutionContext;
             if (!cont) {
               executionContext?.free();
               break;

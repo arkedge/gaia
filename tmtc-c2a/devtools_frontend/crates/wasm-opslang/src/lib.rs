@@ -4,6 +4,9 @@ use wasm_bindgen::prelude::*;
 mod free_variables;
 mod union_value;
 use union_value::UnionValue;
+mod value;
+use value::*;
+mod util;
 
 #[wasm_bindgen]
 pub fn set_panic_hook() {
@@ -11,12 +14,7 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
-#[allow(unused_macros)]
-macro_rules! log {
-    ( $( $t:tt )* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
-    }
-}
+type Result<T, E = RuntimeError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 enum RuntimeError {
@@ -33,7 +31,13 @@ enum RuntimeError {
     DivideByZero,
 }
 
-type Result<T, E = RuntimeError> = std::result::Result<T, E>;
+fn type_err<T>(expected: &'static str, e: &Value) -> Result<T> {
+    Err(RuntimeError::TypeError(expected, e.type_name()))
+}
+
+fn unimpl<T>(s: &'static str) -> Result<T> {
+    Err(RuntimeError::Unimplemented(s))
+}
 
 #[wasm_bindgen(typescript_custom_section)]
 const TS_SECTION_DRIVER: &str = r#"
@@ -45,12 +49,12 @@ interface Driver{
       timeIndicator: Value | undefined,
       command: string,
       params: Value[]
-    ) : Promise<void>;
-    resolveVariable(variablePath : string) : Value | undefined;
-    setLocalVariable(ident : string, value : Value);
-    setDatetimeOrigin(originEpochms: bigint);
-    print(value : Value) : Promise<void>;
-    getTelemetryId(tlmPath : string) : bigint | undefined;
+    ): Promise<void>;
+    resolveVariable(variablePath: string): Value | undefined;
+    setLocalVariable(ident: string, value: Value): void;
+    setDatetimeOrigin(originEpochms: bigint): void;
+    print(value: Value): Promise<void>;
+    getTelemetryId(tlmPath: string): bigint | undefined;
 }
 "#;
 
@@ -87,154 +91,6 @@ extern "C" {
 
     #[wasm_bindgen(catch, method, js_name = "print")]
     pub async fn print(this: &Driver, value: UnionValue) -> Result<(), JsValue>;
-}
-
-#[derive(Debug)]
-enum Value {
-    Integer(i64),
-    Double(f64),
-    Bool(bool),
-    Array(Vec<Value>),
-    String(String),
-    Duration(chrono::Duration),
-    DateTime(chrono::DateTime<chrono::Utc>),
-}
-
-impl From<i64> for Value {
-    fn from(v: i64) -> Self {
-        Value::Integer(v)
-    }
-}
-
-impl From<f64> for Value {
-    fn from(v: f64) -> Self {
-        Value::Double(v)
-    }
-}
-
-impl From<bool> for Value {
-    fn from(v: bool) -> Self {
-        Value::Bool(v)
-    }
-}
-
-impl From<chrono::Duration> for Value {
-    fn from(v: chrono::Duration) -> Self {
-        Value::Duration(v)
-    }
-}
-
-impl From<chrono::DateTime<chrono::Utc>> for Value {
-    fn from(v: chrono::DateTime<chrono::Utc>) -> Self {
-        Value::DateTime(v)
-    }
-}
-
-impl Value {
-    fn type_name(&self) -> &'static str {
-        use Value::*;
-        match self {
-            Integer(_) => "integer",
-            Double(_) => "double",
-            Bool(_) => "bool",
-            Array(_) => "array",
-            String(_) => "string",
-            Duration(_) => "duration",
-            DateTime(_) => "datetime",
-        }
-    }
-
-    fn integer(&self) -> Result<i64> {
-        self.try_into()
-    }
-
-    fn double(&self) -> Result<f64> {
-        self.try_into()
-    }
-
-    fn bool(&self) -> Result<bool> {
-        self.try_into()
-    }
-
-    fn array(&self) -> Result<&Vec<Value>> {
-        match self {
-            Value::Array(x) => Ok(x),
-            _ => type_err("array", self),
-        }
-    }
-
-    fn string(&self) -> Result<&str> {
-        match self {
-            Value::String(x) => Ok(x),
-            _ => type_err("string", self),
-        }
-    }
-
-    fn duration(&self) -> Result<chrono::Duration> {
-        self.try_into()
-    }
-
-    fn datetime(&self) -> Result<chrono::DateTime<chrono::Utc>> {
-        self.try_into()
-    }
-}
-
-impl<'a> TryInto<i64> for &'a Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<i64> {
-        match self {
-            Value::Integer(x) => Ok(*x),
-            _ => type_err("integer", self),
-        }
-    }
-}
-
-impl<'a> TryInto<f64> for &'a Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<f64> {
-        match self {
-            Value::Double(x) => Ok(*x),
-            _ => type_err("double", self),
-        }
-    }
-}
-
-impl TryInto<bool> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<bool> {
-        match self {
-            Value::Bool(x) => Ok(*x),
-            _ => type_err("bool", self),
-        }
-    }
-}
-
-impl TryInto<chrono::Duration> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<chrono::Duration> {
-        match self {
-            Value::Duration(x) => Ok(*x),
-            _ => type_err("duration", self),
-        }
-    }
-}
-
-impl TryInto<chrono::DateTime<chrono::Utc>> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<chrono::DateTime<chrono::Utc>> {
-        match self {
-            Value::DateTime(x) => Ok(*x),
-            _ => type_err("duration", self),
-        }
-    }
-}
-
-fn type_err<T>(expected: &'static str, e: &Value) -> Result<T> {
-    Err(RuntimeError::TypeError(expected, e.type_name()))
-}
-
-fn unimpl<T>(s: &'static str) -> Result<T> {
-    Err(RuntimeError::Unimplemented(s))
 }
 
 enum BinopChain {
@@ -292,7 +148,7 @@ impl Runner {
         }
     }
 
-    pub fn wait_expr(
+    fn wait_expr(
         &self,
         e: &Expr,
         evaluated_durations: &mut Vec<Option<chrono::Duration>>,
@@ -347,14 +203,14 @@ impl Runner {
         }
     }
 
-    pub fn variable(&self, variable_path: &VariablePath) -> Result<Value> {
+    fn variable(&self, variable_path: &VariablePath) -> Result<Value> {
         self.driver
             .resolve_variable(&variable_path.raw)
             .map(Into::into)
             .ok_or_else(|| RuntimeError::Other(format!("variable {} not found", variable_path.raw)))
     }
 
-    pub fn tlmref(&self, variable_path: &VariablePath) -> Result<Value> {
+    fn tlmref(&self, variable_path: &VariablePath) -> Result<Value> {
         //FIXME: prefixing with "$" is a dirty hack
         self.driver
             .resolve_variable(format!("${}", variable_path.raw).as_str())
@@ -601,7 +457,7 @@ impl Runner {
     async fn exec_statement<'bc>(
         &mut self,
         block_context: BlockContext<'bc>,
-        mut context: ExecutionContext,
+        mut context: StatementExecutionContext,
         stmt: &SingleStatement,
         current_time_ms: usize,
     ) -> Result<ExecutionResult> {
@@ -618,7 +474,7 @@ impl Runner {
                 //
                 // duration型に評価されるAtomic条件式については、初回呼び出しの際の評価値が記録され、
                 // 「初回呼び出しからの経過時間」が「初回呼び出しの際の評価値」を超える場合に真と評価される
-                // 「初回呼び出しの際の評価値」はExecutionContextのevaluated_durationsに記録され、
+                // 「初回呼び出しの際の評価値」はStatementExecutionContextのevaluated_durationsに記録され、
                 // そのindexは左から何番目のAtomic条件式であるかを表す
                 // 例えば、
                 //                  1s < 2s && 3s &&  ("A" == "B" || 4s)
@@ -754,7 +610,7 @@ pub enum ControlStatus {
 
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
-pub struct ExecutionContext {
+pub struct StatementExecutionContext {
     initial_execution_time_ms: usize,
     evaluated_durations: Vec<Option<chrono::Duration>>,
 }
@@ -765,13 +621,13 @@ pub struct ExecutionResult {
     pub status: ControlStatus,
     #[wasm_bindgen(js_name = "requestedDelay")]
     pub requested_delay: usize,
-    execution_context: Option<ExecutionContext>,
+    execution_context: Option<StatementExecutionContext>,
 }
 
 #[wasm_bindgen]
 impl ExecutionResult {
     #[wasm_bindgen(getter)]
-    pub fn execution_context(&self) -> Option<ExecutionContext> {
+    pub fn execution_context(&self) -> Option<StatementExecutionContext> {
         self.execution_context.clone()
     }
 }
@@ -793,7 +649,7 @@ impl ExecutionResult {
         }
     }
 
-    fn retry(execution_context: ExecutionContext) -> Self {
+    fn retry(execution_context: StatementExecutionContext) -> Self {
         ExecutionResult {
             status: ControlStatus::Retry,
             requested_delay: 0,
@@ -805,19 +661,6 @@ impl ExecutionResult {
         self.requested_delay = delay;
         self
     }
-}
-
-//TODO: reimplement this
-#[wasm_bindgen(js_name = validateLine)]
-pub fn validate_line(_input: &str, _line_num: usize) -> Result<(), String> {
-    Ok(())
-    //opslang_syn::parser::parse_row(input)
-    //    .map(|_| ())
-    //    .map_err(|mut e| {
-    //        e.location.line += line_num;
-    //        e.location.line -= 1; // because line numbers are 1-indexed
-    //        e.to_string()
-    //    })
 }
 
 #[wasm_bindgen]
@@ -875,44 +718,12 @@ impl ParsedCode {
                 }
             }
         }
-        //self.ast.iter().find(|row| row.span.contains(&offset))
-    }
-}
-
-#[wasm_bindgen]
-impl ParsedCode {
-    #[wasm_bindgen(js_name = fromCode)]
-    pub fn from_code(code: &str) -> Result<ParsedCode, JsValue> {
-        let ast = opslang_syn::parser::parse_statements(code).map_err(|e| e.to_string())?;
-        let newlines = code
-            .char_indices()
-            .filter(|(_, c)| *c == '\n')
-            .map(|(i, _)| i);
-        let line_offsets = std::iter::once(0).chain(newlines.map(|i| i + 1)).collect();
-        Ok(ParsedCode { ast, line_offsets })
     }
 
-    #[wasm_bindgen(js_name = executeLine)]
-    pub async fn execute_line(
+    async fn execute_line_(
         &self,
         driver: Driver,
-        context: Option<ExecutionContext>,
-        stop_on_break: bool,
-        line_num: usize,
-        current_time_ms: usize,
-    ) -> Result<ExecutionResult, String> {
-        let context = context.unwrap_or_else(|| ExecutionContext {
-            initial_execution_time_ms: current_time_ms,
-            evaluated_durations: vec![],
-        });
-        self.execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
-            .await
-    }
-
-    pub async fn execute_line_(
-        &self,
-        driver: Driver,
-        context: ExecutionContext,
+        context: StatementExecutionContext,
         stop_on_break: bool,
         line_num: usize,
         current_time_ms: usize,
@@ -939,6 +750,37 @@ impl ParsedCode {
         } else {
             Ok(ExecutionResult::executed())
         }
+    }
+}
+
+#[wasm_bindgen]
+impl ParsedCode {
+    #[wasm_bindgen(js_name = fromCode)]
+    pub fn from_code(code: &str) -> Result<ParsedCode, JsValue> {
+        let ast = opslang_syn::parser::parse_statements(code).map_err(|e| e.to_string())?;
+        let newlines = code
+            .char_indices()
+            .filter(|(_, c)| *c == '\n')
+            .map(|(i, _)| i);
+        let line_offsets = std::iter::once(0).chain(newlines.map(|i| i + 1)).collect();
+        Ok(ParsedCode { ast, line_offsets })
+    }
+
+    #[wasm_bindgen(js_name = executeLine)]
+    pub async fn execute_line(
+        &self,
+        driver: Driver,
+        context: Option<StatementExecutionContext>,
+        stop_on_break: bool,
+        line_num: usize,
+        current_time_ms: usize,
+    ) -> Result<ExecutionResult, String> {
+        let context = context.unwrap_or_else(|| StatementExecutionContext {
+            initial_execution_time_ms: current_time_ms,
+            evaluated_durations: vec![],
+        });
+        self.execute_line_(driver, context, stop_on_break, line_num, current_time_ms)
+            .await
     }
 
     #[wasm_bindgen(js_name = freeVariables)]
