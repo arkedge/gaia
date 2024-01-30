@@ -20,7 +20,8 @@ type ParameterValue =
 type CommandLine = {
   command: {
     prefix: string;
-    component: string;
+    receiverComponent: string;
+    executorComponent: string | undefined;
     command: string;
   };
   parameters: ParameterValue[];
@@ -31,24 +32,71 @@ const buildTco = (
   commandComponents: { [key: string]: CommandComponentSchema },
   commandLine: CommandLine,
 ): Tco => {
-  if (!Object.hasOwn(commandPrefixes, commandLine.command.prefix)) {
-    throw new Error(`no such command prefix: ${commandLine.command.prefix}`);
-  }
-  const commandPrefix = commandPrefixes[commandLine.command.prefix];
-  if (!Object.hasOwn(commandPrefix.subsystems, commandLine.command.component)) {
-    throw new Error(
-      `prefix is not defined for component: ${commandLine.command.component}`,
+  console.log(`command line: ${JSON.stringify(commandLine)}`);
+  let componentName = commandLine.command.receiverComponent;
+  let commandPrefixName = commandLine.command.prefix;
+
+  // FIXME: アドホックな変換
+  // Gaia側の改修が必要?
+  if (commandLine.command.executorComponent !== undefined) {
+    if (commandLine.command.receiverComponent !== "MOBC") {
+      throw new Error(
+        `Executor component is only allowed when receiverComponent is MOBC`,
+      );
+    }
+
+    const executionType =
+      commandPrefixes[commandLine.command.prefix]?.subsystems["MOBC"]?.metadata
+        ?.executionType;
+    if (executionType === undefined) {
+      throw new Error(`Couldn't find executionType`);
+    }
+    console.log("executionType: ", executionType);
+    const convertedCommandPrefix = Object.entries(commandPrefixes).find(
+      ([_, prefix]) => {
+        const schema =
+          prefix.subsystems[commandLine.command.executorComponent!];
+        if (schema === undefined) {
+          return false;
+        }
+
+        // destinationType must be "TO_ME"
+        if (schema.metadata?.destinationType !== 0) {
+          return false;
+        }
+
+        // must have the same executionType in MOBC
+        if (schema.metadata?.executionType !== executionType) {
+          return false;
+        }
+
+        return true;
+      },
     );
+
+    if (convertedCommandPrefix === undefined) {
+      throw new Error(`Couldn't find matching command prefix`);
+    }
+
+    componentName = commandLine.command.executorComponent;
+    commandPrefixName = convertedCommandPrefix[0];
+    console.log(`converted command prefix: ${commandPrefixName}`);
   }
-  const commandSubsystem =
-    commandPrefix.subsystems[commandLine.command.component];
-  if (!Object.hasOwn(commandComponents, commandLine.command.component)) {
-    throw new Error(`no such component: ${commandLine.command.component}`);
+  if (!Object.hasOwn(commandPrefixes, commandPrefixName)) {
+    throw new Error(`no such command prefix: ${commandPrefixName}`);
   }
-  const componentSchema = commandComponents[commandLine.command.component];
+  const commandPrefix = commandPrefixes[commandPrefixName];
+  if (!Object.hasOwn(commandPrefix.subsystems, componentName)) {
+    throw new Error(`prefix is not defined for component: ${componentName}`);
+  }
+  const commandSubsystem = commandPrefix.subsystems[componentName];
+  if (!Object.hasOwn(commandComponents, componentName)) {
+    throw new Error(`no such component: ${componentName}`);
+  }
+  const componentSchema = commandComponents[componentName];
   if (!Object.hasOwn(componentSchema.commands, commandLine.command.command)) {
     throw new Error(
-      `no such command in ${commandLine.command.component}: ${commandLine.command.command}`,
+      `no such command in ${componentName}: ${commandLine.command.command}`,
     );
   }
   const commandSchema = componentSchema.commands[commandLine.command.command];
@@ -165,7 +213,7 @@ const buildTco = (
         break;
     }
   }
-  const name = `${commandLine.command.prefix}.${commandLine.command.component}.${commandLine.command.command}`;
+  const name = `${commandPrefixName}.${componentName}.${commandLine.command.command}`;
   return {
     name,
     params: tcoParams,
@@ -180,7 +228,7 @@ class Driver implements opslang.Driver {
   localVariables: Map<string, opslang.Value> = new Map();
   tlmVariables: Map<string, opslang.Value> = new Map();
   params: Map<string, opslang.Value> = new Map();
-  datetimeOrigin: bigint | undefined = undefined;
+  datetimeOrigin: Map<string, bigint> = new Map();
 
   constructor(
     commandPrefixes: { [key: string]: CommandPrefixSchema },
@@ -193,22 +241,18 @@ class Driver implements opslang.Driver {
     this.telemetryComponents = telemetryComponents;
     this.client = client;
   }
-  setDatetimeOrigin(origin: bigint) {
+  setDatetimeOrigin(component: string, origin: bigint) {
     console.log(`set datetime origin: ${origin}`);
-    this.datetimeOrigin = origin;
+    this.datetimeOrigin.set(component, origin);
   }
   async sendCommand(
     prefix: string,
-    component: string,
-    executingComponent: string | undefined,
+    receiverComponent: string,
+    executorComponent: string | undefined,
     timeIndicator: opslang.Value | undefined,
     command: string,
     params: opslang.Value[],
   ): Promise<void> {
-    if (executingComponent !== undefined) {
-      throw new Error(`executingComponent is not supported`);
-    }
-
     const tiParam = [];
     if (timeIndicator !== undefined) {
       tiParam.push(timeIndicator);
@@ -217,7 +261,8 @@ class Driver implements opslang.Driver {
     const commandLine: CommandLine = {
       command: {
         prefix,
-        component,
+        receiverComponent,
+        executorComponent,
         command,
       },
       parameters: fullParams.map((arg): ParameterValue => {
@@ -232,10 +277,11 @@ class Driver implements opslang.Driver {
             double: arg.value,
           };
         } else if (arg.kind === "datetime") {
-          if (this.datetimeOrigin === undefined) {
+          const datetimeOrigin = this.datetimeOrigin.get(receiverComponent);
+          if (datetimeOrigin === undefined) {
             throw new Error(`datetime origin is not set`);
           }
-          const millis_since_origin = arg.value - this.datetimeOrigin;
+          const millis_since_origin = arg.value - datetimeOrigin;
           const ti = Number(millis_since_origin / BigInt(100));
           return {
             type: "integer",

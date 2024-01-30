@@ -1139,7 +1139,7 @@ checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 [[package]]
 name = "opslang-syn"
 version = "0.1.0"
-source = "git+ssh://git@github.com/arkedge/opslang?branch=syntax_v1#0f3b67ea6b9ed30a4fa2447b05cabea494bcaad7"
+source = "git+ssh://git@github.com/arkedge/opslang?branch=syntax_v1#cbf337a5bcf35d72756ad7f5487b6e69d9a82973"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2062,6 +2062,8 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tlmcmddb"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ad369378cb3161705423ac55a49190816b6044296b576bdf9d7049dba5b9132"
 dependencies = [
  "serde",
 ]
@@ -2659,6 +2661,7 @@ dependencies = [
  "chrono",
  "console_error_panic_hook",
  "opslang-syn",
+ "regex",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
@@ -2838,7 +2841,3 @@ dependencies = [
  "quote",
  "syn 2.0.39",
 ]
-
-[[patch.unused]]
-name = "tlmcmddb-csv"
-version = "0.2.0"

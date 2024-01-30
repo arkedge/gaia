@@ -52,7 +52,7 @@ interface Driver{
     ): Promise<void>;
     resolveVariable(variablePath: string): Value | undefined;
     setLocalVariable(ident: string, value: Value): void;
-    setDatetimeOrigin(originEpochms: bigint): void;
+    setDatetimeOrigin(component: string, originEpochms: bigint): void;
     print(value: Value): Promise<void>;
     getTelemetryId(tlmPath: string): bigint | undefined;
 }
@@ -84,7 +84,7 @@ extern "C" {
     pub fn set_local_variable(this: &Driver, ident: &str, value: UnionValue);
 
     #[wasm_bindgen(method, js_name = "setDatetimeOrigin")]
-    pub fn set_datetime_origin(this: &Driver, origin_epoch_ms: i64);
+    pub fn set_datetime_origin(this: &Driver, component: &str, origin_epoch_ms: i64);
 
     #[wasm_bindgen(method, js_name = "getTelemetryId")]
     pub fn get_telemetry_id(this: &Driver, tlm_path: &str) -> Option<i64>;
@@ -527,11 +527,11 @@ impl Runner {
             Command(command) => {
                 let receiver = command
                     .destination
-                    .receiver
+                    .receiver_component
                     .as_ref()
-                    .or(block_context.default_destination)
+                    .or(block_context.default_receiver_component)
                     .ok_or_else(|| RuntimeError::Other("no receiver".to_owned()))?;
-                let executor = command.destination.executor.as_ref();
+                let executor = command.destination.executor_component.as_ref();
                 let ti = if let Some(ti) = &command.destination.time_indicator {
                     Some(self.expr(ti)?.into())
                 } else {
@@ -546,8 +546,8 @@ impl Runner {
 
                 self.send_command(
                     receiver.exec_method.as_str(),
-                    receiver.component.as_str(),
-                    executor.map(|e| e.component.as_str()),
+                    receiver.name.as_str(),
+                    executor.map(|e| e.name.as_str()),
                     ti,
                     &command.name,
                     args?,
@@ -570,11 +570,14 @@ impl Runner {
                 Ok(ExecutionResult::executed())
             }
             Set(s) => {
+                let re = regex::Regex::new(r"DATETIME_ORIGIN\.(\w+)").unwrap();
                 let name = &s.name.raw;
-                if name == "DATETIME_ORIGIN" {
+                if let Some(captures) = re.captures(name) {
+                    let component = captures.get(1).unwrap().as_str();
                     let value = self.expr(&s.expr)?;
                     let datetime = value.datetime()?;
-                    self.driver.set_datetime_origin(datetime.timestamp_millis());
+                    self.driver
+                        .set_datetime_origin(component, datetime.timestamp_millis());
                     Ok(ExecutionResult::executed())
                 } else {
                     Err(RuntimeError::UnknownParamName)
@@ -670,7 +673,7 @@ pub struct ParsedCode {
 }
 
 struct BlockContext<'a> {
-    default_destination: Option<&'a Destination>,
+    default_receiver_component: Option<&'a ReceiverComponent>,
     delay: Option<&'a Expr>,
 }
 
@@ -695,7 +698,7 @@ impl ParsedCode {
         match statement {
             Statement::Single(row) => Some(FoundRow::RowWithContext {
                 block_context: BlockContext {
-                    default_destination: None,
+                    default_receiver_component: None,
                     delay: None,
                 },
                 row,
@@ -710,7 +713,7 @@ impl ParsedCode {
                     let row = block.rows.iter().find(|row| row.span.contains(&offset))?;
                     Some(FoundRow::RowWithContext {
                         block_context: BlockContext {
-                            default_destination: block.default_destination.as_ref(),
+                            default_receiver_component: block.default_receiver_component.as_ref(),
                             delay: block.delay.as_ref(),
                         },
                         row,
