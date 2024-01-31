@@ -304,10 +304,10 @@ class Driver implements opslang.Driver {
   }
 
   resolveVariable(name: string): opslang.Value | undefined {
-    const local = this.localVariables.get(name);
-    if (local !== undefined) {
-      return local;
-    }
+    return this.localVariables.get(name);
+  }
+
+  resolveTelemetryVariable(name: string): opslang.Value | undefined {
     return this.tlmVariables.get(name);
   }
 
@@ -367,13 +367,16 @@ class Driver implements opslang.Driver {
     console.log(`print: ${toStr(value)}`);
   }
 
-  async prepareVariables(variables: string[]): Promise<void> {
+  async prepareVariables(
+    _variables: string[],
+    tlmVariables: string[],
+  ): Promise<void> {
     this.tlmVariables.clear();
 
-    for (const name of variables) {
+    for (const name of tlmVariables) {
       //とりあえずnameは $RT.MOBC.HK.PH.VER 形式と仮定
 
-      const re = new RegExp("\\$([^.]*\\.[^.]*\\.[^.]*)\\.(.*)");
+      const re = new RegExp("([^.]*\\.[^.]*\\.[^.]*)\\.(.*)");
       const matches = re.exec(name);
       if (matches === null) {
         continue;
@@ -493,7 +496,11 @@ export const CommandView: React.FC = () => {
         isFirstLine: boolean,
       ): Promise<ExecuteLineResult> => {
         try {
-          await driver.prepareVariables(parsed.freeVariables(lineNum));
+          const vs = parsed.freeVariables(lineNum);
+          const vars = vs.variables;
+          const tlmVars = vs.telemetry_variables;
+          vs.free();
+          await driver.prepareVariables(vars, tlmVars);
           const result = await parsed.executeLine(
             driver,
             context,

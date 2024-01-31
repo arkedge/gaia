@@ -51,6 +51,7 @@ interface Driver{
       params: Value[]
     ): Promise<void>;
     resolveVariable(variablePath: string): Value | undefined;
+    resolveTelemetryVariable(variablePath: string): Value | undefined;
     setLocalVariable(ident: string, value: Value): void;
     setDatetimeOrigin(component: string, originEpochms: bigint): void;
     print(value: Value): Promise<void>;
@@ -78,6 +79,8 @@ extern "C" {
     // スタックマシンにするか？
     #[wasm_bindgen(method, js_name = "resolveVariable")]
     pub fn resolve_variable(this: &Driver, variable_path: &str) -> Option<UnionValue>;
+    #[wasm_bindgen(method, js_name = "resolveTelemetryVariable")]
+    pub fn resolve_telemetry_variable(this: &Driver, variable_path: &str) -> Option<UnionValue>;
 
     // mutableな状態管理はExecutor側に任せることにする
     #[wasm_bindgen(method, js_name = "setLocalVariable")]
@@ -211,9 +214,8 @@ impl Runner {
     }
 
     fn tlmref(&self, variable_path: &VariablePath) -> Result<Value> {
-        //FIXME: prefixing with "$" is a dirty hack
         self.driver
-            .resolve_variable(format!("${}", variable_path.raw).as_str())
+            .resolve_telemetry_variable(format!("{}", variable_path.raw).as_str())
             .map(Into::into)
             .ok_or_else(|| RuntimeError::Other(format!("variable {} not found", variable_path.raw)))
     }
@@ -757,6 +759,24 @@ impl ParsedCode {
 }
 
 #[wasm_bindgen]
+pub struct Variables {
+    inner: free_variables::Variables,
+}
+
+#[wasm_bindgen]
+impl Variables {
+    #[wasm_bindgen(getter)]
+    pub fn variables(&self) -> Vec<String> {
+        self.inner.variables.iter().cloned().collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn telemetry_variables(&self) -> Vec<String> {
+        self.inner.telemetry_variables.iter().cloned().collect()
+    }
+}
+
+#[wasm_bindgen]
 impl ParsedCode {
     #[wasm_bindgen(js_name = fromCode)]
     pub fn from_code(code: &str) -> Result<ParsedCode, JsValue> {
@@ -786,26 +806,25 @@ impl ParsedCode {
             .await
     }
 
-    #[wasm_bindgen(js_name = freeVariables)]
-    pub fn free_variables(&self, line_num: usize) -> Result<Vec<String>, String> {
+    fn free_variables_(&self, line_num: usize) -> Result<free_variables::Variables, String> {
+        use free_variables::Variables;
         let found_row = self
             .find_row(line_num)
             .ok_or_else(|| format!("line {} not found", line_num))?;
-
         let row = match found_row {
-            FoundRow::Empty => return Ok(vec![]),
+            FoundRow::Empty => return Ok(Variables::empty()),
             FoundRow::RowWithContext { row, .. } => row,
         };
         if let Some(stmt) = &row.content {
-            use std::collections::HashSet;
-            Ok(free_variables::stmt(
-                stmt,
-                &HashSet::new(), // TODO: manage bound variables?
-            )
-            .into_iter()
-            .collect())
+            Ok(Variables::from_statement(stmt))
         } else {
-            Ok(vec![])
+            Ok(Variables::empty())
         }
+    }
+
+    #[wasm_bindgen(js_name = freeVariables)]
+    pub fn free_variables(&self, line_num: usize) -> Result<Variables, String> {
+        self.free_variables_(line_num)
+            .map(|inner| Variables { inner })
     }
 }

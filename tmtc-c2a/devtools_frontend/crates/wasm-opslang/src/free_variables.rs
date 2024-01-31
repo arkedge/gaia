@@ -1,17 +1,23 @@
 use opslang_syn::typedef::*;
 use std::collections::HashSet;
 
-struct Scanner<'bound> {
-    bound: &'bound HashSet<&'bound str>,
-    set: HashSet<String>,
+pub struct Variables {
+    pub variables: HashSet<String>,
+    pub telemetry_variables: HashSet<String>,
 }
 
-impl<'bound> Scanner<'bound> {
-    fn new(bound: &'bound HashSet<&'bound str>) -> Self {
-        Scanner {
-            bound,
-            set: HashSet::new(),
+impl Variables {
+    pub fn empty() -> Self {
+        Variables {
+            variables: HashSet::new(),
+            telemetry_variables: HashSet::new(),
         }
+    }
+
+    pub fn from_statement(stmt: &SingleStatement) -> Self {
+        let mut vs = Variables::empty();
+        vs.stmt(stmt);
+        vs
     }
 
     fn stmt(&mut self, stmt: &SingleStatement) {
@@ -42,16 +48,10 @@ impl<'bound> Scanner<'bound> {
     fn expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Variable(VariablePath { raw }) => {
-                if !self.bound.contains(raw.as_str()) {
-                    self.set.insert(raw.to_owned());
-                }
+                self.variables.insert(raw.to_owned());
             }
             Expr::TlmRef(VariablePath { raw }) => {
-                //FIXME: prefixing with "$" is a dirty hack
-                let path = format!("${}", raw);
-                if !self.bound.contains(&path[..]) {
-                    self.set.insert(path);
-                }
+                self.telemetry_variables.insert(raw.to_owned());
             }
             Expr::Literal(_) => {}
             Expr::UnOp(_, expr) => self.expr(expr),
@@ -67,10 +67,4 @@ impl<'bound> Scanner<'bound> {
             }
         }
     }
-}
-
-pub fn stmt(stmt: &SingleStatement, bounded: &HashSet<&str>) -> HashSet<String> {
-    let mut scanner = Scanner::new(bounded);
-    scanner.stmt(stmt);
-    scanner.set
 }
