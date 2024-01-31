@@ -279,7 +279,7 @@ class Driver implements opslang.Driver {
         } else if (arg.kind === "datetime") {
           const datetimeOrigin = this.datetimeOrigin.get(receiverComponent);
           if (datetimeOrigin === undefined) {
-            throw new Error(`datetime origin is not set`);
+            throw new Error(`datetime origin is not set for ${receiverComponent}`);
           }
           const millis_since_origin = arg.value - datetimeOrigin;
           const ti = Number(millis_since_origin / BigInt(100));
