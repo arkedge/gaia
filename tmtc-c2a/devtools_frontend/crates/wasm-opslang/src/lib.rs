@@ -1,4 +1,4 @@
-use opslang_syn::typedef::*;
+use opslang_ast::*;
 use wasm_bindgen::prelude::*;
 
 mod free_variables;
@@ -780,7 +780,7 @@ impl Variables {
 impl ParsedCode {
     #[wasm_bindgen(js_name = fromCode)]
     pub fn from_code(code: &str) -> Result<ParsedCode, JsValue> {
-        let ast = opslang_syn::parser::parse_statements(code).map_err(|e| e.to_string())?;
+        let ast = opslang_parser::parser::parse_statements(code).map_err(|e| e.to_string())?;
         let newlines = code
             .char_indices()
             .filter(|(_, c)| *c == '\n')

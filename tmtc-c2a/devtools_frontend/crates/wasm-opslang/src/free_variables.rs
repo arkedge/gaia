@@ -1,4 +1,4 @@
-use opslang_syn::typedef::*;
+use opslang_ast::*;
 use std::collections::HashSet;
 
 pub struct Variables {
