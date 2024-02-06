@@ -7,13 +7,16 @@ use anyhow::{Context, Result};
 use axum::{error_handling::HandleError, response::Redirect, routing::get};
 use clap::Parser;
 use gaia_tmtc::broker::broker_server::BrokerServer;
+use gaia_tmtc::recorder::recorder_client::RecorderClient;
+use gaia_tmtc::recorder::RecordHook;
+use gaia_tmtc::BeforeHookLayer;
 use gaia_tmtc::{
     broker::{self, BrokerService},
     handler,
     telemetry::{self, LastTmivStore},
 };
 use tmtc_c2a::proto::tmtc_generic_c2a::tmtc_generic_c2a_server::TmtcGenericC2aServer;
-use tonic::transport::{NamedService, Server};
+use tonic::transport::{Channel, NamedService, Server, Uri};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower::ServiceBuilder;
@@ -43,6 +46,8 @@ pub struct Args {
     tlmcmddb: PathBuf,
     #[clap(env, long)]
     satconfig: PathBuf,
+    #[clap(env, long)]
+    recorder_endpoint : Option<Uri>
 }
 
 impl Args {
@@ -91,6 +96,16 @@ async fn main() -> Result<()> {
         &satconfig.cmd_apid_map,
         satconfig.cmd_prefix_map,
     )?;
+
+    let recorder_client = if let Some(recorder_endpoint) = args.recorder_endpoint {
+        let recorder_client_channel = Channel::builder(recorder_endpoint).connect().await?;
+        let recorder_client = RecorderClient::new(recorder_client_channel);
+        Some(recorder_client)
+    } else {
+        None
+    };
+    let recorder_layer = recorder_client.map(RecordHook::new).map(BeforeHookLayer::new);
+
     let tmtc_generic_c2a_service =
         proto::tmtc_generic_c2a::Service::new(&tlm_registry, &cmd_registry)?;
 
@@ -99,9 +114,10 @@ async fn main() -> Result<()> {
     let all_tmiv_names = tlm_registry.all_tmiv_names();
     let last_tmiv_store = Arc::new(LastTmivStore::new(all_tmiv_names));
     let store_last_tmiv_hook = telemetry::StoreLastTmivHook::new(last_tmiv_store.clone());
-    let tlm_handler: gaia_tmtc::BeforeHook<telemetry::Bus, telemetry::StoreLastTmivHook> =
+    let tlm_handler =
         handler::Builder::new()
             .before_hook(store_last_tmiv_hook)
+            .option_layer(recorder_layer.clone())
             .build(tlm_bus.clone());
 
     let (link, socket) = kble_gs::new();
@@ -117,7 +133,10 @@ async fn main() -> Result<()> {
     );
     let sat_tlm_reporter_task = sat_tlm_reporter.run(tlm_handler.clone());
 
-    let cmd_handler = handler::Builder::new().build(satellite_svc);
+    let cmd_handler = 
+        handler::Builder::new()
+        .option_layer(recorder_layer)
+        .build(satellite_svc);
 
     // Constructing gRPC services
     let server_task = {
