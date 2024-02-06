@@ -47,7 +47,7 @@ pub struct Args {
     #[clap(env, long)]
     satconfig: PathBuf,
     #[clap(env, long)]
-    recorder_endpoint : Option<Uri>
+    recorder_endpoint: Option<Uri>,
 }
 
 impl Args {
@@ -104,7 +104,9 @@ async fn main() -> Result<()> {
     } else {
         None
     };
-    let recorder_layer = recorder_client.map(RecordHook::new).map(BeforeHookLayer::new);
+    let recorder_layer = recorder_client
+        .map(RecordHook::new)
+        .map(BeforeHookLayer::new);
 
     let tmtc_generic_c2a_service =
         proto::tmtc_generic_c2a::Service::new(&tlm_registry, &cmd_registry)?;
@@ -114,11 +116,10 @@ async fn main() -> Result<()> {
     let all_tmiv_names = tlm_registry.all_tmiv_names();
     let last_tmiv_store = Arc::new(LastTmivStore::new(all_tmiv_names));
     let store_last_tmiv_hook = telemetry::StoreLastTmivHook::new(last_tmiv_store.clone());
-    let tlm_handler =
-        handler::Builder::new()
-            .before_hook(store_last_tmiv_hook)
-            .option_layer(recorder_layer.clone())
-            .build(tlm_bus.clone());
+    let tlm_handler = handler::Builder::new()
+        .before_hook(store_last_tmiv_hook)
+        .option_layer(recorder_layer.clone())
+        .build(tlm_bus.clone());
 
     let (link, socket) = kble_gs::new();
     let kble_socket_fut = socket.serve((args.kble_addr, args.kble_port));
@@ -133,8 +134,7 @@ async fn main() -> Result<()> {
     );
     let sat_tlm_reporter_task = sat_tlm_reporter.run(tlm_handler.clone());
 
-    let cmd_handler = 
-        handler::Builder::new()
+    let cmd_handler = handler::Builder::new()
         .option_layer(recorder_layer)
         .build(satellite_svc);
 
