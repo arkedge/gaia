@@ -106,15 +106,11 @@ impl BinopChain {
         BinopChain::Unresolved(l, r)
     }
 
-    fn or<L, R>(self, f: impl Fn(L, R) -> Result<Value>) -> Result<Self>
-    where
-        for<'a> &'a Value: TryInto<L>,
-        for<'a> &'a Value: TryInto<R>,
-    {
+    fn or<L: Castable, R: Castable>(self, f: impl Fn(L, R) -> Result<Value>) -> Result<Self> {
         match &self {
             BinopChain::Unresolved(l, r) => {
-                let l_cast = (l).try_into();
-                let r_cast = (r).try_into();
+                let l_cast = l.cast();
+                let r_cast = r.cast();
                 if let (Ok(l), Ok(r)) = (l_cast, r_cast) {
                     return f(l, r).map(BinopChain::Resolved);
                 }

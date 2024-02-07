@@ -57,15 +57,15 @@ impl Value {
     }
 
     pub fn integer(&self) -> Result<i64> {
-        self.try_into()
+        self.cast()
     }
 
     pub fn double(&self) -> Result<f64> {
-        self.try_into()
+        self.cast()
     }
 
     pub fn bool(&self) -> Result<bool> {
-        self.try_into()
+        self.cast()
     }
 
     pub fn array(&self) -> Result<&Vec<Value>> {
@@ -83,60 +83,46 @@ impl Value {
     }
 
     pub fn duration(&self) -> Result<chrono::Duration> {
-        self.try_into()
+        self.cast()
     }
 
     pub fn datetime(&self) -> Result<chrono::DateTime<chrono::Utc>> {
-        self.try_into()
+        self.cast()
     }
 }
 
-impl<'a> TryInto<i64> for &'a Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<i64> {
-        match self {
-            Value::Integer(x) => Ok(*x),
-            _ => type_err("integer", self),
+pub trait Castable {
+    const TYPE_NAME: &'static str;
+    fn from_value(v: &Value) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+impl Value {
+    pub fn cast<T: Castable>(&self) -> Result<T> {
+        match T::from_value(self) {
+            Some(x) => Ok(x),
+            None => type_err(T::TYPE_NAME, self),
         }
     }
 }
 
-impl<'a> TryInto<f64> for &'a Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<f64> {
-        match self {
-            Value::Double(x) => Ok(*x),
-            _ => type_err("double", self),
+macro_rules! impl_castable {
+    ($t:ty, $tyname:expr, $variant:ident) => {
+        impl Castable for $t {
+            const TYPE_NAME: &'static str = stringify!($tyname);
+            fn from_value(v: &Value) -> Option<Self> {
+                match v {
+                    Value::$variant(x) => Some(*x as $t),
+                    _ => None,
+                }
+            }
         }
-    }
+    };
 }
 
-impl TryInto<bool> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<bool> {
-        match self {
-            Value::Bool(x) => Ok(*x),
-            _ => type_err("bool", self),
-        }
-    }
-}
-
-impl TryInto<chrono::Duration> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<chrono::Duration> {
-        match self {
-            Value::Duration(x) => Ok(*x),
-            _ => type_err("duration", self),
-        }
-    }
-}
-
-impl TryInto<chrono::DateTime<chrono::Utc>> for &Value {
-    type Error = RuntimeError;
-    fn try_into(self) -> Result<chrono::DateTime<chrono::Utc>> {
-        match self {
-            Value::DateTime(x) => Ok(*x),
-            _ => type_err("duration", self),
-        }
-    }
-}
+impl_castable!(i64, "integer", Integer);
+impl_castable!(f64, "double", Double);
+impl_castable!(bool, "bool", Bool);
+impl_castable!(chrono::Duration, "duration", Duration);
+impl_castable!(chrono::DateTime<chrono::Utc>, "datetime", DateTime);
