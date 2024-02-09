@@ -15,8 +15,8 @@
     "lint:prettier": "prettier . --check",
     "lint:eslint": "eslint . --format stylish",
     "lint": "run-p lint:*",
-    "fix:prettier": "yarn lint:prettier --write",
-    "fix:eslint": "yarn lint:eslint --fix",
+    "fix:prettier": "pnpm run lint:prettier --write",
+    "fix:eslint": "pnpm run lint:eslint --fix",
     "fix": "run-s fix:eslint fix:prettier"
   },
   "dependencies": {
@@ -24,6 +24,8 @@
     "@blueprintjs/icons": "5.4.1",
     "@monaco-editor/react": "^4.5.0",
     "@protobuf-ts/grpcweb-transport": "^2.8.2",
+    "@protobuf-ts/runtime": "^2.9.3",
+    "@protobuf-ts/runtime-rpc": "^2.9.3",
     "monaco-editor": "^0.44.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -34,22 +36,25 @@
   },
   "devDependencies": {
     "@protobuf-ts/plugin": "^2.8.2",
-    "@types/react": "18.2.39",
-    "@types/react-dom": "18.2.17",
-    "@typescript-eslint/eslint-plugin": "6.13.1",
-    "@typescript-eslint/parser": "6.13.1",
-    "@vitejs/plugin-react": "4.2.0",
-    "autoprefixer": "10.4.16",
-    "eslint": "8.54.0",
-    "eslint-config-prettier": "9.0.0",
+    "@types/react": "18.2.55",
+    "@types/react-dom": "18.2.19",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
+    "@vitejs/plugin-react": "4.2.1",
+    "autoprefixer": "10.4.17",
+    "eslint": "8.56.0",
+    "eslint-config-prettier": "9.1.0",
     "eslint-config-react": "1.1.7",
     "eslint-plugin-react": "7.33.2",
     "eslint-plugin-react-hooks": "4.6.0",
     "npm-run-all": "4.1.5",
-    "postcss": "8.4.31",
-    "prettier": "3.1.0",
-    "typescript": "5.3.2",
-    "vite": "4.5.2",
-    "vite-plugin-rewrite-all": "^1.0.1"
-  }
+    "postcss": "8.4.35",
+    "prettier": "3.2.5",
+    "typescript": "5.3.3",
+    "vite": "5.1.1"
+  },
+  "engines": {
+    "node": "^21"
+  },
+  "packageManager": "pnpm@8.15.1"
 }
