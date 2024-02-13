@@ -15,6 +15,7 @@ use gaia_tmtc::{
     handler,
     telemetry::{self, LastTmivStore},
 };
+use notalawyer_clap::*;
 use tmtc_c2a::proto::tmtc_generic_c2a::tmtc_generic_c2a_server::TmtcGenericC2aServer;
 use tonic::transport::{Channel, NamedService, Server, Uri};
 use tonic_health::server::HealthReporter;
@@ -65,7 +66,7 @@ impl Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = Args::parse_with_license_notice(include_notice!());
 
     let _guard = sentry::init(sentry::ClientOptions {
         dsn: args.sentry_dsn.clone(),

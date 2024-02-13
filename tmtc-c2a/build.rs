@@ -37,6 +37,8 @@ fn main() {
             .expect("failed to execute yarn");
         assert!(status.success(), "failed to build frontend");
     }
+
+    notalawyer_build::build();
 }
 
 fn copy_devtools_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
