@@ -1,5 +1,5 @@
+use crate::type_err;
 use crate::Result;
-use crate::{type_err, RuntimeError};
 
 #[derive(Debug)]
 pub(crate) enum Value {

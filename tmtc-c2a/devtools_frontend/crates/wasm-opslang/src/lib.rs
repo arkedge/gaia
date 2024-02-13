@@ -211,7 +211,7 @@ impl Runner {
 
     fn tlmref(&self, variable_path: &VariablePath) -> Result<Value> {
         self.driver
-            .resolve_telemetry_variable(format!("{}", variable_path.raw).as_str())
+            .resolve_telemetry_variable(&variable_path.raw)
             .map(Into::into)
             .ok_or_else(|| RuntimeError::Other(format!("variable {} not found", variable_path.raw)))
     }

@@ -4,3 +4,5 @@ macro_rules! log {
         web_sys::console::log_1(&format!( $( $t )* ).into());
     }
 }
+#[allow(unused_imports)]
+pub(crate) use log;
