@@ -685,13 +685,15 @@ enum FoundRow<'a> {
 
 impl ParsedCode {
     fn find_row(&self, line_num: usize) -> Option<FoundRow> {
-        let offset = self.line_offsets[line_num - 1];
+        let offset = *self.line_offsets.get(line_num - 1)?;
         let statement = self.ast.iter().find(|stmt| {
             let span = match stmt {
                 Statement::Single(row) => &row.span,
                 Statement::Block(block) => &block.span,
             };
-            span.contains(&offset)
+
+            let last_empty_line = span.start == span.end && offset == span.start;
+            span.contains(&offset) || last_empty_line
         })?;
         match statement {
             Statement::Single(row) => Some(FoundRow::RowWithContext {
