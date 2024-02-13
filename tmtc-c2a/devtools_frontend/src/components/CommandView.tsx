@@ -584,7 +584,7 @@ export const CommandView: React.FC = () => {
           return [false, undefined];
         }
 
-        const delayLength = Math.max(result.requestedDelay, 250);
+        const delayLength = Math.max(result.requestedDelay, 0);
         const delay = new Promise((resolve) =>
           setTimeout(resolve, delayLength),
         );
