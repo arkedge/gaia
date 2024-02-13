@@ -311,7 +311,7 @@ class Driver implements opslang.Driver {
     const value = field.value;
     switch (value.oneofKind) {
       case "string":
-        return undefined;
+        return { kind: "string", value: value.string };
       case "bytes":
         return undefined;
       case "double":
@@ -319,7 +319,7 @@ class Driver implements opslang.Driver {
       case "integer":
         return { kind: "integer", value: value.integer };
       case "enum":
-        return undefined;
+        return { kind : "string", value: value.enum };
     }
   }
 
