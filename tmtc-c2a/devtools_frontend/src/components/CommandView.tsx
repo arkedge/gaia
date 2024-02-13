@@ -32,7 +32,6 @@ const buildTco = (
   commandComponents: { [key: string]: CommandComponentSchema },
   commandLine: CommandLine,
 ): Tco => {
-  console.log(`command line: ${JSON.stringify(commandLine)}`);
   let componentName = commandLine.command.receiverComponent;
   let commandPrefixName = commandLine.command.prefix;
 
@@ -51,7 +50,6 @@ const buildTco = (
     if (executionType === undefined) {
       throw new Error(`Couldn't find executionType`);
     }
-    console.log("executionType: ", executionType);
     const convertedCommandPrefix = Object.entries(commandPrefixes).find(
       ([_, prefix]) => {
         const schema =
@@ -80,7 +78,6 @@ const buildTco = (
 
     componentName = commandLine.command.executorComponent;
     commandPrefixName = convertedCommandPrefix[0];
-    console.log(`converted command prefix: ${commandPrefixName}`);
   }
   if (!Object.hasOwn(commandPrefixes, commandPrefixName)) {
     throw new Error(`no such command prefix: ${commandPrefixName}`);
@@ -242,7 +239,6 @@ class Driver implements opslang.Driver {
     this.client = client;
   }
   setDatetimeOrigin(component: string, origin: bigint) {
-    console.log(`set datetime origin: ${origin}`);
     this.datetimeOrigin.set(component, origin);
   }
   async sendCommand(
