@@ -37,6 +37,9 @@ jobs:
         with:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
 
+      - name: Install cargo-about
+        run: cargo install cargo-about --locked
+
       - name: cache dependencies
         uses: Swatinem/rust-cache@v2.7.1
 
