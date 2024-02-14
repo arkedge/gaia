@@ -275,7 +275,9 @@ class Driver implements opslang.Driver {
         } else if (arg.kind === "datetime") {
           const datetimeOrigin = this.datetimeOrigin.get(receiverComponent);
           if (datetimeOrigin === undefined) {
-            throw new Error(`datetime origin is not set for ${receiverComponent}`);
+            throw new Error(
+              `datetime origin is not set for ${receiverComponent}`,
+            );
           }
           const millis_since_origin = arg.value - datetimeOrigin;
           const ti = Number(millis_since_origin / BigInt(100));
@@ -319,7 +321,7 @@ class Driver implements opslang.Driver {
       case "integer":
         return { kind: "integer", value: value.integer };
       case "enum":
-        return { kind : "string", value: value.enum };
+        return { kind: "string", value: value.enum };
     }
   }
 
