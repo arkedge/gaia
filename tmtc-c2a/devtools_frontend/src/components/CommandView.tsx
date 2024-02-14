@@ -466,7 +466,7 @@ export const CommandView: React.FC = () => {
             ?.getAllDecorations()
             .map((d) => d.id) ?? [];
         editor.removeDecorations(ids);
-        validate(monacoInstance, editor.getModel()!);
+        //validate(monacoInstance, editor.getModel()!);
       });
 
       const clearDecoration = (range: monaco.Range) => {
@@ -614,6 +614,27 @@ export const CommandView: React.FC = () => {
         return [true, result.executionContext];
       };
 
+      const tryParse = (): opslang.ParsedCode | undefined => {
+        try {
+          const parsed = opslang.ParsedCode.fromCode(editor.getValue());
+          return parsed;
+        } catch (e) {
+          const lines = model.getLineCount();
+          monacoInstance.editor.setModelMarkers(model, "owner", [
+            {
+              message: `${e}`,
+              severity: monaco.MarkerSeverity.Error,
+              startLineNumber: 1,
+              startColumn: 1,
+              endLineNumber: lines,
+              endColumn: model.getLineLength(lines) + 1,
+            },
+          ]);
+
+          return undefined;
+        }
+      };
+
       editor.addCommand(
         monaco.KeyMod.Shift | monaco.KeyCode.Enter,
         async () => {
@@ -621,7 +642,11 @@ export const CommandView: React.FC = () => {
           if (position === null) {
             return;
           }
-          const parsed = opslang.ParsedCode.fromCode(editor.getValue());
+          const parsed = tryParse();
+          if (!parsed) {
+            return;
+          }
+
           const initialLine = position.lineNumber;
           let executionContext: opslang.StatementExecutionContext | undefined =
             undefined;
