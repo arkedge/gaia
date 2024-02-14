@@ -39,6 +39,9 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
           components: clippy, rustfmt
 
+      - name: Install cargo-about
+        run: cargo install cargo-about --locked
+
       - name: cache dependencies
         uses: Swatinem/rust-cache@v2.7.1
 
