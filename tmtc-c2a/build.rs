@@ -19,18 +19,25 @@ fn main() {
         let devtools_build_dir = out_dir.join("devtools_frontend");
         copy_devtools_dir("devtools_frontend", &devtools_build_dir).unwrap();
 
-        let status = Command::new("yarn")
+        let status = Command::new("corepack")
+            .arg("enable")
             .current_dir(&devtools_build_dir)
             .status()
-            .expect("failed to execute yarn");
+            .expect("failed to execute corepack");
+        assert!(status.success(), "failed to install pnpm via corepack");
+
+        let status = Command::new("pnpm")
+            .arg("install")
+            .current_dir(&devtools_build_dir)
+            .status()
+            .expect("failed to execute pnpm");
         assert!(status.success(), "failed to install deps for frontend");
 
         let devtools_out_dir = out_dir.join("devtools_dist");
-        let status = Command::new("yarn")
+        let status = Command::new("pnpm")
             .current_dir(&devtools_build_dir)
             .arg("run")
             .arg("build:vite")
-            .arg("--")
             .arg("--outDir")
             .arg(&devtools_out_dir)
             .status()
