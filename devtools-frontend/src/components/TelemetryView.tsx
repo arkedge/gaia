@@ -6,6 +6,7 @@ import { useClient } from "./Layout";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TelemetrySchema } from "../proto/tmtc_generic_c2a";
+import type { RecordingStatus } from "../worker";
 
 const buildTelemetryFieldTreeBlueprintFromSchema = (
   tlm: TelemetrySchema,
@@ -162,6 +163,76 @@ const InlineNamespaceContentCell: React.FC<InlineNamespaceContentCellProps> = ({
 };
 
 export const TelemetryView: React.FC = () => {
+  const { client } = useClient();
+  const [recorderStatus, setRecordingStatus] = useState<RecordingStatus | null>(
+    null,
+  );
+  const params = useParams();
+  const tmivName = params["tmivName"]!;
+  useEffect(() => {
+    const readerP = client
+      .openRecordingStatusStream()
+      .then((stream) => stream.getReader());
+    let cancel;
+    const cancelP = new Promise((resolve) => (cancel = resolve));
+    Promise.all([readerP, cancelP]).then(([reader]) => reader.cancel());
+    readerP.then(async (reader) => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const next = await reader.read();
+        if (next.done) {
+          break;
+        }
+        setRecordingStatus(next.value);
+      }
+    });
+    return cancel;
+  }, [client]);
+
+  const toggleRecordingStatus = async () => {
+    if (!recorderStatus?.directoryIsSet) {
+      const directoryHandle = await window.showDirectoryPicker({
+        mode: "readwrite",
+      });
+      client.setRootRecordDirectory(directoryHandle);
+    }
+    if (recorderStatus?.recordingTelemetries.has(tmivName)) {
+      client.disableRecording(tmivName);
+    } else {
+      client.enableRecording(tmivName);
+    }
+  };
+
+
+
+    const recording =
+    recorderStatus?.recordingTelemetries?.has(tmivName) ?? false;
+
+  const recordingMenuItemsWhenRecording = (
+    <>
+      <li>Recording: ON</li>
+      <li onClick={toggleRecordingStatus}>Stop Recording</li>
+    </>
+  );
+  const recordingMenuItemsWhenNotRecording = (
+    <>
+      <li>Recording: OFF</li>
+      <li onClick={toggleRecordingStatus}>Start Recording</li>
+    </>
+  );
+  return (
+    <>
+      <nav>
+        {recording
+          ? recordingMenuItemsWhenRecording
+          : recordingMenuItemsWhenNotRecording}
+      </nav>
+      <TelemetryViewBody />
+    </>
+  );
+};
+
+const TelemetryViewBody: React.FC = () => {
   const params = useParams();
   const tmivName = params["tmivName"]!;
   const {
