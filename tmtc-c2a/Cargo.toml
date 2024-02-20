@@ -28,7 +28,6 @@ tonic-health = "0.10"
 tonic-reflection = "0.10"
 tonic-web = "0.10"
 axum = { version = "0.6", default-features = false, features = ["http1", "tokio"] }
-rust-embed = { version = "8.0.0", features = ["interpolate-folder-path", "debug-embed"] }
 mime_guess = "2.0.4"
 sentry = { version = "0.31", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.31"
@@ -36,6 +35,7 @@ tlmcmddb = "0.2.0"
 structpack.workspace = true
 gaia-ccsds-c2a.workspace = true
 gaia-tmtc.workspace = true
+c2a-devtools-frontend.workspace = true
 kble-socket = { version = "0.2.0", features = ["tungstenite"] }
 tokio-tungstenite = "0.18"
 itertools = "0.11.0"

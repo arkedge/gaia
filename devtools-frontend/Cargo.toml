@@ -1,0 +1,8 @@
+[package]
+name = "c2a-devtools-frontend"
+edition = "2021"
+version.workspace = true
+license = "MPL-2.0"
+
+[dependencies]
+rust-embed = { version = "8.0.0", features = ["interpolate-folder-path", "debug-embed"] }
