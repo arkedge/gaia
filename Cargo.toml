@@ -9,6 +9,10 @@ members = [
     "tmtc-c2a/devtools_frontend/crates/wasm-opslang",
 ]
 
+exclude = [
+    "target",
+]
+
 [workspace.package]
 version = "0.6.1"
 
