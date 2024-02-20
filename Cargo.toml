@@ -8,7 +8,7 @@ members = [
     "tmtc-c2a",
     "devtools-frontend",
     # 開発時はdevtools_frontend 内で直接wasm-pack buildするため
-    "devtools_frontend/crates/wasm-opslang",
+    "devtools-frontend/crates/wasm-opslang",
 ]
 
 exclude = [
