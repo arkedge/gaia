@@ -2,13 +2,9 @@ use axum::{
     http::{header, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
 };
-use rust_embed::RustEmbed;
+use c2a_devtools_frontend::Assets;
 
 static INDEX_HTML: &str = "index.html";
-
-#[derive(RustEmbed)]
-#[folder = "$OUT_DIR/devtools_dist"]
-struct Assets;
 
 pub async fn serve(uri: Uri) -> Response {
     let path = uri.path().trim_start_matches('/');
