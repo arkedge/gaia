@@ -43,7 +43,7 @@ jobs:
         run: cargo install cargo-about --locked
 
       - name: cache dependencies
-        uses: Swatinem/rust-cache@v2.7.1
+        uses: Swatinem/rust-cache@v2.7.3
 
       - name: reviewdog / clippy
         uses: sksat/action-clippy@v0.4.0
