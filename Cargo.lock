@@ -267,6 +267,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
+name = "c2a-devtools-frontend"
+version = "0.6.1"
+dependencies = [
+ "rust-embed",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2086,6 +2093,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "c2a-devtools-frontend",
  "chrono",
  "clap",
  "funty",
@@ -2101,7 +2109,6 @@ dependencies = [
  "notalawyer-clap",
  "prost",
  "prost-types",
- "rust-embed",
  "sentry",
  "sentry-tracing",
  "serde",

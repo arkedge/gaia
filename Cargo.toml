@@ -6,8 +6,9 @@ members = [
     "gaia-tmtc",
     "gaia-ccsds-c2a",
     "tmtc-c2a",
+    "devtools-frontend",
     # 開発時はdevtools_frontend 内で直接wasm-pack buildするため
-    "tmtc-c2a/devtools_frontend/crates/wasm-opslang",
+    "devtools_frontend/crates/wasm-opslang",
 ]
 
 exclude = [
@@ -24,3 +25,4 @@ structpack = "0.6"
 gaia-stub = { path = "gaia-stub" }
 gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
 gaia-tmtc = { path = "gaia-tmtc" }
+c2a-devtools-frontend = { path = "devtools-frontend" }
