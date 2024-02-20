@@ -2073,8 +2073,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tlmcmddb"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ad369378cb3161705423ac55a49190816b6044296b576bdf9d7049dba5b9132"
+source = "git+https://github.com/arkedge/c2a-tlmcmddb?branch=blob_tlm_model#c1dd6bcb8fcef36ae35cdd6f9b644aa3960385a3"
 dependencies = [
  "serde",
 ]
