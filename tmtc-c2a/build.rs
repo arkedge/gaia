@@ -6,8 +6,7 @@ use std::{
 
 fn wasm_packages_root() -> PathBuf {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let wasm_outdir = out_dir.join("wasm_packages");
-    wasm_outdir
+    out_dir.join("wasm_packages")
 }
 
 fn wasm_pack(name: &str, devtools_build_dir: &PathBuf) {
