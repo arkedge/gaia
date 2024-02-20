@@ -187,6 +187,7 @@ impl Registry {
         }
 
         let mut schema_map = HashMap::new();
+        let mut unused_apid_map = rev_apid_map.clone();
         for (metadata, fields) in from_tlmcmddb(db).flatten() {
             let apids = rev_apid_map
                 .get(metadata.component_name.as_str())
@@ -195,6 +196,7 @@ impl Registry {
                 Some(fields) => TelemetrySchema::Struct(build_telemetry_schema(fields)?),
                 None => TelemetrySchema::Blob,
             };
+            unused_apid_map.remove(metadata.component_name.as_str());
             for apid in apids {
                 let metadata = metadata.clone();
                 let schema = schema.clone();
@@ -208,6 +210,16 @@ impl Registry {
                 );
             }
         }
+
+        for (component_name, apid) in unused_apid_map.into_iter() {
+            let schema = FatTelemetrySchema {
+                component: component_name.to_owned(),
+                telemetry: "BLOB".to_owned(),
+                schema: TelemetrySchema::Blob,
+            };
+            schema_map.insert((apid[0], 0), schema);
+        }
+
         Ok(Self {
             channel_map,
             schema_map,
