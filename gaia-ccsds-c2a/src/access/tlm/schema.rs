@@ -94,7 +94,7 @@ pub struct TelemetryIter<'a> {
 }
 
 impl<'a> Iterator for TelemetryIter<'a> {
-    type Item = (Metadata, FieldIter<'a>);
+    type Item = (Metadata, Option<FieldIter<'a>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let telemetry = self.telemetries.next()?;
@@ -104,10 +104,16 @@ impl<'a> Iterator for TelemetryIter<'a> {
             tlm_id: telemetry.metadata.packet_id,
             is_restriced: telemetry.metadata.is_restricted,
         };
-        let fields = Box::new(iter_fields(&telemetry.entries).filter_map(|(obs, field)| {
-            build_bit_range(&field.extraction_info).map(|bit_range| (obs, field, bit_range))
-        }));
-        Some((metadata, FieldIter { fields }))
+        use tlmcmddb::tlm::Content;
+        match &telemetry.content {
+            Content::Struct(entries) => {
+                let fields = Box::new(iter_fields(entries).filter_map(|(obs, field)| {
+                    build_bit_range(&field.extraction_info).map(|bit_range| (obs, field, bit_range))
+                }));
+                Some((metadata, Some(FieldIter { fields })))
+            }
+            Content::Blob => Some((metadata, None)),
+        }
     }
 }
 
