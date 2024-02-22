@@ -44,7 +44,22 @@ impl<'a> Display for TmivName<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct TelemetrySchema {
+pub enum TelemetrySchema {
+    Struct(StructTelemetrySchema),
+    Blob,
+}
+
+impl TelemetrySchema {
+    pub fn as_struct(&self) -> Option<&StructTelemetrySchema> {
+        match self {
+            TelemetrySchema::Struct(schema) => Some(schema),
+            TelemetrySchema::Blob => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructTelemetrySchema {
     pub integral_fields: Vec<(FieldMetadata, IntegralFieldSchema)>,
     pub floating_fields: Vec<(FieldMetadata, FloatingFieldSchema)>,
 }
@@ -87,18 +102,21 @@ impl Registry {
         self.schema_map
             .iter()
             .map(|((apid, tlm_id), fat_tlm_schema)| {
-                let fields = fat_tlm_schema
-                    .schema
-                    .integral_fields
-                    .iter()
-                    .map(|(m, _)| m)
-                    .chain(fat_tlm_schema.schema.floating_fields.iter().map(|(m, _)| m))
-                    .sorted_by_key(|m| m.order)
-                    .map(|m| proto::TelemetryFieldSchema {
-                        metadata: Some(proto::TelemetryFieldSchemaMetadata {}),
-                        name: m.original_name.to_string(),
-                    })
-                    .collect();
+                let fields = match &fat_tlm_schema.schema {
+                    TelemetrySchema::Blob => vec![],
+                    TelemetrySchema::Struct(schema) => {
+                        let integral_fields = schema.integral_fields.iter().map(|(m, _)| m);
+                        let floating_fields = schema.floating_fields.iter().map(|(m, _)| m);
+                        let fields = integral_fields.chain(floating_fields);
+                        fields
+                            .sorted_by_key(|m| m.order)
+                            .map(|m| proto::TelemetryFieldSchema {
+                                metadata: Some(proto::TelemetryFieldSchemaMetadata {}),
+                                name: m.original_name.to_string(),
+                            })
+                            .collect()
+                    }
+                };
                 let telemetry_schema = proto::TelemetrySchema {
                     metadata: Some(proto::TelemetrySchemaMetadata { id: *tlm_id as u32 }),
                     fields,
@@ -169,11 +187,16 @@ impl Registry {
         }
 
         let mut schema_map = HashMap::new();
+        let mut unused_apid_map = rev_apid_map.clone();
         for (metadata, fields) in from_tlmcmddb(db).flatten() {
             let apids = rev_apid_map
                 .get(metadata.component_name.as_str())
                 .ok_or_else(|| anyhow!("APID not defined for {}", metadata.component_name))?;
-            let schema = build_telemetry_schema(fields)?;
+            let schema = match fields {
+                Some(fields) => TelemetrySchema::Struct(build_telemetry_schema(fields)?),
+                None => TelemetrySchema::Blob,
+            };
+            unused_apid_map.remove(metadata.component_name.as_str());
             for apid in apids {
                 let metadata = metadata.clone();
                 let schema = schema.clone();
@@ -187,6 +210,16 @@ impl Registry {
                 );
             }
         }
+
+        for (component_name, apid) in unused_apid_map.into_iter() {
+            let schema = FatTelemetrySchema {
+                component: component_name.to_owned(),
+                telemetry: "BLOB".to_owned(),
+                schema: TelemetrySchema::Blob,
+            };
+            schema_map.insert((apid[0], 0), schema);
+        }
+
         Ok(Self {
             channel_map,
             schema_map,
@@ -196,8 +229,8 @@ impl Registry {
 
 fn build_telemetry_schema<'a>(
     iter: impl Iterator<Item = Result<(&'a str, FieldSchema)>>,
-) -> Result<TelemetrySchema> {
-    let mut schema = TelemetrySchema {
+) -> Result<StructTelemetrySchema> {
+    let mut schema = StructTelemetrySchema {
         integral_fields: vec![],
         floating_fields: vec![],
     };
