@@ -13,6 +13,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { Top } from "./components/Top";
 import { Callout, FocusStyleManager, Intent } from "@blueprintjs/core";
 import { CommandView } from "./components/CommandView";
+import { OldCommandView } from "./components/OldCommandView";
 import { buildClient } from "./client";
 import type { GrpcClientService } from "./worker";
 import { IconNames } from "@blueprintjs/icons";
@@ -75,8 +76,12 @@ const router = createBrowserRouter(
           element: <TelemetryView />,
         },
         {
-          path: "command",
+          path: "command_new",
           element: <CommandView />,
+        },
+        {
+          path: "command",
+          element: <OldCommandView />,
         },
       ],
     },

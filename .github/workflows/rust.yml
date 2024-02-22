@@ -42,6 +42,9 @@ jobs:
       - name: Install cargo-about
         run: cargo install cargo-about --locked
 
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
       - name: cache dependencies
         uses: Swatinem/rust-cache@v2.7.1
 
