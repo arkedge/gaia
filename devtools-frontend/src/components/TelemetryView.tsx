@@ -221,14 +221,14 @@ export const TelemetryView: React.FC = () => {
     </>
   );
   return (
-    <>
+    <div className="p-1 h-full flex-1 flex flex-col">
       <nav>
         {recording
           ? recordingMenuItemsWhenRecording
           : recordingMenuItemsWhenNotRecording}
       </nav>
       <TelemetryViewBody />
-    </>
+    </div>
   );
 };
 
