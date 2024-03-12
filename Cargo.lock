@@ -99,17 +99,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-recursion"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd55a5ba1179988837d24ab4c7cc8ed6efdeff578ede0416b4225a5fca35bd0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.39",
-]
-
-[[package]]
 name = "async-stream"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -347,16 +336,6 @@ name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
-
-[[package]]
-name = "console_error_panic_hook"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
-dependencies = [
- "cfg-if",
- "wasm-bindgen",
-]
 
 [[package]]
 name = "core-foundation"
@@ -1144,28 +1123,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
-name = "opslang-ast"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9eee0061efbe3a6ecc686515f83f1a49a4f36721f88feac01ab907d547b532d"
-dependencies = [
- "chrono",
-]
-
-[[package]]
-name = "opslang-parser"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4662c47aa5b18b3536bb571e87499b635cd037222075cc460abca65ec200df32"
-dependencies = [
- "anyhow",
- "chrono",
- "opslang-ast",
- "peg",
- "thiserror",
-]
-
-[[package]]
 name = "os_info"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1204,33 +1161,6 @@ dependencies = [
  "smallvec",
  "windows-targets 0.48.5",
 ]
-
-[[package]]
-name = "peg"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "400bcab7d219c38abf8bd7cc2054eb9bbbd4312d66f6a5557d572a203f646f61"
-dependencies = [
- "peg-macros",
- "peg-runtime",
-]
-
-[[package]]
-name = "peg-macros"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46e61cce859b76d19090f62da50a9fe92bab7c2a5f09e183763559a2ac392c90"
-dependencies = [
- "peg-runtime",
- "proc-macro2",
- "quote",
-]
-
-[[package]]
-name = "peg-runtime"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36bae92c60fa2398ce4678b98b2c4b5a7c61099961ca1fa305aec04a9ad28922"
 
 [[package]]
 name = "percent-encoding"
@@ -1642,12 +1572,6 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
-
-[[package]]
-name = "scoped-tls"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scopeguard"
@@ -2645,47 +2569,6 @@ name = "wasm-bindgen-shared"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
-
-[[package]]
-name = "wasm-bindgen-test"
-version = "0.3.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9bf62a58e0780af3e852044583deee40983e5886da43a271dd772379987667b"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "scoped-tls",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test-macro",
-]
-
-[[package]]
-name = "wasm-bindgen-test-macro"
-version = "0.3.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7f89739351a2e03cb94beb799d47fb2cac01759b40ec441f7de39b00cbf7ef0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.39",
-]
-
-[[package]]
-name = "wasm-opslang"
-version = "0.1.0"
-dependencies = [
- "async-recursion",
- "chrono",
- "console_error_panic_hook",
- "opslang-ast",
- "opslang-parser",
- "regex",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
-]
 
 [[package]]
 name = "web-sys"
