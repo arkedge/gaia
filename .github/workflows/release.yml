@@ -46,6 +46,10 @@ jobs:
         run: |
           cargo install --locked cargo-about
 
+      - name: Install wasm-pack
+        run: |
+          cargo install --locked wasm-pack
+
       - name: Build
         run: |
           cargo build --target=${{ matrix.target }} --release --locked
