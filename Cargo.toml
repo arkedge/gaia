@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+
 members = [
     "gaia-stub",
     "structpack",
@@ -17,7 +18,9 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.7.0-beta.1"
+version = "0.7.0-beta.2"
+description = "A command and control system for C2A-based satellites"
+repository = "https://github.com/arkedge/gaia"
 
 [workspace.dependencies]
 structpack = "0.6"
