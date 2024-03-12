@@ -1,0 +1,6 @@
+# for local testing
+[patch.crates-io]
+gaia-stub = { path = "gaia-stub" }
+gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
+gaia-tmtc = { path = "gaia-tmtc" }
+c2a-devtools-frontend = { path = "devtools-frontend" }
