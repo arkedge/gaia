@@ -36,7 +36,7 @@ tlmcmddb = "0.2.0"
 structpack.workspace = true
 gaia-ccsds-c2a.workspace = true
 gaia-tmtc.workspace = true
-kble-socket = { version = "0.2.0", features = ["tungstenite"] }
+kble-socket = { version = "0.3.0", features = ["tungstenite"] }
 tokio-tungstenite = "0.18"
 itertools = "0.11.0"
 notalawyer = "0.1.0"
