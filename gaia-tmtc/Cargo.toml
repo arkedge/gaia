@@ -1,6 +1,8 @@
 [package]
 name = "gaia-tmtc"
 version.workspace = true
+description.workspace = true
+repository.workspace = true
 edition = "2021"
 license = "MPL-2.0"
 
