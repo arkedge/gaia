@@ -7,11 +7,11 @@ members = [
     "gaia-ccsds-c2a",
     "tmtc-c2a",
     "devtools-frontend",
-    # 開発時はdevtools_frontend 内で直接wasm-pack buildするため
-    "devtools-frontend/crates/wasm-opslang",
 ]
 
 exclude = [
+    # 開発時はdevtools_frontend 内で直接wasm-pack buildするため
+    "devtools-frontend/crates/wasm-opslang",
     # ビルド時はdevtools_frontend/crates が OUT_DIR 以下にコピーされた後wasm-pack buildされるため
     "target",
 ]
