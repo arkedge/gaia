@@ -44,7 +44,7 @@ jobs:
         run: cargo install wasm-pack --locked
 
       - name: cache dependencies
-        uses: Swatinem/rust-cache@v2.7.1
+        uses: Swatinem/rust-cache@v2.7.3
 
       - run: rm -rf ./target/doc
 
