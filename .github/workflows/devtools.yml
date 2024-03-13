@@ -1,0 +1,51 @@
+name: DevTools
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  devtools:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.1.2
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4.0.2
+
+      - name: Get Rust toolchain
+        id: toolchain
+        run: |
+          awk -F'[ ="]+' '$1 == "channel" { print "toolchain=" $2 }' rust-toolchain >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.toolchain }}
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: cache dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: install pnpm
+        working-directory: devtools-frontend
+        run: corepack enable
+
+      - name: install frontend dependencies
+        working-directory: devtools-frontend
+        run: pnpm install
+
+      - name: lint
+        working-directory: devtools-frontend
+        run: pnpm lint
+
+      - name: build
+        working-directory: devtools-frontend
+        run: pnpm build
