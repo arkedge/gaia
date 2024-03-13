@@ -50,7 +50,7 @@ jobs:
         run: |
           cargo install --locked wasm-pack
 
-      - name: Build
+      - name: Build binaries
         run: |
           cargo build --target=${{ matrix.target }} --release --locked
 
@@ -69,9 +69,52 @@ jobs:
           if-no-files-found: error
           path: ./bin/
 
+  package:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4.1.1
+
+      - name: install apt depenedencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Rust toolchain
+        id: toolchain
+        working-directory: .
+        run: |
+          awk -F'[ ="]+' '$1 == "channel" { print "toolchain=" $2 }' rust-toolchain >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.toolchain }}
+
+      - uses: Swatinem/rust-cache@v2.7.3
+
+      - name: install cargo-about
+        run: |
+          cargo install --locked cargo-about
+
+      - name: Install wasm-pack
+        run: |
+          cargo install --locked wasm-pack
+
+      - name: package
+        run: |
+          cargo package
+
+      # TODO: cargo publish
+
   release:
     name: Release
-    needs: [ build ]
+    needs: [ build, package ]
     permissions:
       contents: write
 
