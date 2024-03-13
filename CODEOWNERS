@@ -1,2 +1,8 @@
 # project owner
 * @KOBA789
+
+# CI/CD team
+.github/workflows/* @KOBA789 @sksat
+
+# Renovate team
+renovate.json   @KOBA789 @sksat
