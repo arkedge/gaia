@@ -18,6 +18,8 @@ jobs:
           submodules: recursive
 
       - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 21
 
       - name: Get Rust toolchain
         id: toolchain
