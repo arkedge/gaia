@@ -55,6 +55,11 @@ fn copy_devtools_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result
             if entry.file_name().to_str() == Some("node_modules") {
                 continue;
             }
+            // In `cargo package`, each crate source files are copied to
+            // target/package/crate-<version> & threre are target dir
+            if entry.file_name().to_str() == Some("target") {
+                continue;
+            }
             copy_devtools_dir(entry.path(), dst.as_ref().join(entry.file_name()))?;
         } else {
             fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
