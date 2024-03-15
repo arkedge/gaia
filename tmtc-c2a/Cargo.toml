@@ -29,7 +29,7 @@ tonic = { version = "0.10", features = ["tls", "tls-roots-common", "tls-webpki-r
 tonic-health = "0.10"
 tonic-reflection = "0.10"
 tonic-web = "0.10"
-axum = { version = "0.6", default-features = false, features = ["http1", "tokio"] }
+axum = { version = "0.7", default-features = false, features = ["http1", "tokio"] }
 mime_guess = "2.0.4"
 sentry = { version = "0.32", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
 sentry-tracing = "0.32"
