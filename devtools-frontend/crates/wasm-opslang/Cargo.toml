@@ -1,3 +1,7 @@
+# This manifest should be workspace root to set `[profile.release]` individually
+# Additionally, this source dir is copied to $OUT_DIR in `cargo build` & this crate should be workspace root for `cargo metadata` invoked from `wask-pack` in source dir (not in $OUT_DIR, dev phase)
+[workspace]
+
 [package]
 name = "wasm-opslang"
 version = "0.1.0"
