@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
 
+      # for devtools-frontend
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 21
+
       - name: install apt depenedencies
         run: |
           sudo apt-get update
