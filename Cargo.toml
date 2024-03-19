@@ -11,8 +11,8 @@ members = [
 ]
 
 exclude = [
-    # 開発時はdevtools_frontend 内で直接wasm-pack buildするため
-    "devtools-frontend/crates/wasm-opslang",
+    # WASM 用の別の cargo workspace であるため
+    "devtools-frontend/crates",
     # ビルド時はdevtools_frontend/crates が OUT_DIR 以下にコピーされた後wasm-pack buildされるため
     "target",
 ]
