@@ -37,14 +37,14 @@ jobs:
         with:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
 
+      - name: cache dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+
       - name: Install cargo-about
         run: cargo install cargo-about --locked
 
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
-
-      - name: cache dependencies
-        uses: Swatinem/rust-cache@v2.7.3
 
       - run: rm -rf ./target/doc
 
