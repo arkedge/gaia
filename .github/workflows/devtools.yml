@@ -30,11 +30,11 @@ jobs:
         with:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
 
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --locked
-
       - name: cache dependencies
         uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
 
       - name: install pnpm
         working-directory: devtools-frontend
