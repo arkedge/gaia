@@ -9,8 +9,8 @@ dependencies:
     specifier: 5.7.1
     version: 5.7.1(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0)
   '@blueprintjs/icons':
-    specifier: 5.4.1
-    version: 5.4.1(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0)
+    specifier: 5.9.0
+    version: 5.9.0(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0)
   '@monaco-editor/react':
     specifier: ^4.5.0
     version: 4.6.0(monaco-editor@0.44.0)(react-dom@18.2.0)(react@18.2.0)
@@ -359,7 +359,7 @@ packages:
         optional: true
     dependencies:
       '@blueprintjs/colors': 5.1.0
-      '@blueprintjs/icons': 5.4.1(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0)
+      '@blueprintjs/icons': 5.9.0(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0)
       '@popperjs/core': 2.11.8
       '@types/react': 18.2.65
       classnames: 2.5.1
@@ -371,10 +371,10 @@ packages:
       tslib: 2.6.2
     dev: false
 
-  /@blueprintjs/icons@5.4.1(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-rDQxBEyksYa59nn9w4POZyiSEqv6uwy1nxh7eI3QRU7HsyQ4fsu8zmvmsDQwmw727DDXhl2ofWhs3u1wIBli4g==}
+  /@blueprintjs/icons@5.9.0(@types/react@18.2.65)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-9W9DYFqSORBr1QPSEwpbjnftbU+hfWB/gFtpa4LdzR7VhtQaCdcrinyXFmNUFacQ9czYrmr72bP567Rv6pRUDg==}
     peerDependencies:
-      '@types/react': ^16.14.32 || 17 || 18
+      '@types/react': ^16.14.41 || 17 || 18
       react: ^16.8 || 17 || 18
       react-dom: ^16.8 || 17 || 18
     peerDependenciesMeta:
