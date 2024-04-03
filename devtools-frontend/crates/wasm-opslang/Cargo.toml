@@ -13,8 +13,8 @@ default = ["console_error_panic_hook"]
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "*", features = ["console"] }
-opslang-ast = "0.2.0"
-opslang-parser = "0.2.0"
+opslang-ast = { git = "https://github.com/arkedge/opslang", branch = "main" }
+opslang-parser = { git = "https://github.com/arkedge/opslang", branch = "main" }
 async-recursion = "*"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
