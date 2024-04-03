@@ -28,4 +28,4 @@ structpack = "0.6"
 gaia-stub = "0.7.0-beta.3"
 gaia-ccsds-c2a = "0.7.0-beta.3"
 gaia-tmtc = "0.7.0-beta.3"
-c2a-devtools-frontend = "0.7.0-beta.3"
+c2a-devtools-frontend = { path = "devtools-frontend" }
