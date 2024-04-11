@@ -6,7 +6,7 @@ use structpack::{
     FloatingField, FloatingValue, GenericFloatingField, GenericIntegralField, IntegralField,
     IntegralValue, SizedField,
 };
-use tlmcmddb::{tlm as tlmdb, Component};
+use tlmcmddb::tlm as tlmdb;
 
 use crate::access::tlm::converter;
 
@@ -64,66 +64,45 @@ impl FloatingFieldSchema {
 pub enum FieldSchema {
     Integral(IntegralFieldSchema),
     Floating(FloatingFieldSchema),
+    Blob { start_position: usize },
 }
 
-pub fn from_tlmcmddb(db: &tlmcmddb::Database) -> ComponentIter {
-    ComponentIter {
-        iter: db.components.iter(),
-    }
-}
+pub fn from_tlmcmddb(
+    db: &tlmcmddb::Database,
+) -> impl Iterator<Item = impl Iterator<Item = (Metadata, FieldIter<'_>)>> {
+    db.components.iter().map(|component| {
+        component.tlm.telemetries.iter().map(|telemetry| {
+            let metadata = Metadata {
+                component_name: component.name.to_string(),
+                telemetry_name: telemetry.name.to_string(),
+                tlm_id: telemetry.metadata.packet_id,
+                is_restriced: telemetry.metadata.is_restricted,
+            };
+            let fields = Box::new(iter_struct_fields(&telemetry.entries).filter_map(
+                |(obs, field)| {
+                    build_bit_range(&field.extraction_info).map(|bit_range| (obs, field, bit_range))
+                },
+            ));
 
-pub struct ComponentIter<'a> {
-    iter: std::slice::Iter<'a, Component>,
-}
-
-impl<'a> Iterator for ComponentIter<'a> {
-    type Item = TelemetryIter<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let component = self.iter.next()?;
-        Some(TelemetryIter {
-            component_name: &component.name,
-            telemetries: component.tlm.telemetries.iter(),
+            let blob_field = find_blob_field(&telemetry.entries);
+            (metadata, FieldIter { fields, blob_field })
         })
-    }
-}
-
-pub struct TelemetryIter<'a> {
-    component_name: &'a str,
-    telemetries: std::slice::Iter<'a, tlmdb::Telemetry>,
-}
-
-impl<'a> Iterator for TelemetryIter<'a> {
-    type Item = (Metadata, FieldIter<'a>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let telemetry = self.telemetries.next()?;
-        let metadata = Metadata {
-            component_name: self.component_name.to_string(),
-            telemetry_name: telemetry.name.to_string(),
-            tlm_id: telemetry.metadata.packet_id,
-            is_restriced: telemetry.metadata.is_restricted,
-        };
-        let fields = Box::new(iter_fields(&telemetry.entries).filter_map(|(obs, field)| {
-            build_bit_range(&field.extraction_info).map(|bit_range| (obs, field, bit_range))
-        }));
-        Some((metadata, FieldIter { fields }))
-    }
+    })
 }
 
 pub struct FieldIter<'a> {
     fields:
         Box<dyn Iterator<Item = (tlmdb::OnboardSoftwareInfo, &'a tlmdb::Field, Range<usize>)> + 'a>,
+    blob_field: Option<(&'a tlmdb::BlobEntry, usize)>,
 }
 
-impl<'a> Iterator for FieldIter<'a> {
-    type Item = Result<(&'a str, FieldSchema)>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (obs, field, bit_range) = self.fields.next()?;
-        build_field_schema(obs, field, bit_range)
-            .map(Some)
-            .transpose()
+impl<'a> FieldIter<'a> {
+    pub fn iter_fields(self) -> impl Iterator<Item = Result<(&'a str, FieldSchema)>> {
+        self.fields
+            .map(|(obs, field, bit_range)| build_field_schema(obs, field, bit_range))
+            .chain(self.blob_field.into_iter().map(|(blob, start_position)| {
+                Ok((blob.name.as_str(), FieldSchema::Blob { start_position }))
+            }))
     }
 }
 
@@ -219,7 +198,7 @@ fn build_bit_range(extraction_info: &tlmdb::FieldExtractionInfo) -> Option<Range
     Some(bit_start_global..bit_end_global)
 }
 
-fn iter_fields(
+fn iter_struct_fields(
     entries: &[tlmdb::Entry],
 ) -> impl Iterator<Item = (tlmdb::OnboardSoftwareInfo, &tlmdb::Field)> {
     entries
@@ -228,6 +207,7 @@ fn iter_fields(
             tlmdb::Entry::FieldGroup(group) => {
                 Some((&group.onboard_software_info, &group.sub_entries))
             }
+            tlmdb::Entry::BlobEntry(_) => None,
             tlmdb::Entry::Comment(_) => None,
         })
         .flat_map(|(obs_info, sub_entries)| {
@@ -239,6 +219,31 @@ fn iter_fields(
             tlmdb::SubEntry::Field(field) => Some((obs_info, field)),
             tlmdb::SubEntry::Comment(_) => None,
         })
+}
+
+fn find_blob_field(entries: &[tlmdb::Entry]) -> Option<(&tlmdb::BlobEntry, usize)> {
+    let blob_entry = entries.iter().find_map(|entry| match entry {
+        tlmdb::Entry::BlobEntry(blob) => Some(blob),
+        _ => None,
+    })?;
+
+    let struct_fields = entries
+        .iter()
+        .filter_map(|e| match e {
+            tlmdb::Entry::FieldGroup(fg) => Some(fg),
+            _ => None,
+        })
+        .flat_map(|fg| {
+            fg.sub_entries.iter().filter_map(|se| match se {
+                tlmdb::SubEntry::Field(f) => Some(f),
+                _ => None,
+            })
+        });
+    let start_position = struct_fields
+        .map(|f| f.extraction_info.octet_position + 1)
+        .max()
+        .unwrap_or(0);
+    Some((blob_entry, start_position))
 }
 
 fn try_integral_to_f64(integral: IntegralValue) -> Result<f64> {
