@@ -124,39 +124,7 @@ class TelemetryRecorder {
     this.run(rootRecordDirectory);
   }
 
-  private async write(
-    recordDirectory: FileSystemDirectoryHandle,
-    writable: FileSystemWritableFileStream,
-    tmiv: Tmiv,
-  ) {
-    // if tmiv has @blob field, save it to a file
-    let blobFileName = "";
-    const blob = tmiv.fields.find((field) => {
-      return field.name === "@blob";
-    });
-    if (blob !== undefined) {
-      if (blob.value.oneofKind == "bytes") {
-        const blobBytes = blob.value.bytes;
-        //FIXME: safer name consrtuction
-        const blobDirectory = await recordDirectory.getDirectoryHandle(
-          "blob_data",
-          {
-            create: true,
-          },
-        );
-
-        // FIXME: readable time format?
-        // FIXME: avoid name collision
-        blobFileName = `${Date.now()}.dat`;
-        const recordFile = await blobDirectory.getFileHandle(blobFileName, {
-          create: true,
-        });
-        const blobWritable = await recordFile.createWritable();
-        await blobWritable.write(blobBytes);
-        await blobWritable.close();
-      }
-    }
-
+  private async write(writable: FileSystemWritableFileStream, tmiv: Tmiv) {
     const fields: { [key: string]: any } = {};
     for (const field of tmiv.fields) {
       if (field.name.includes("@RAW")) {
@@ -164,9 +132,7 @@ class TelemetryRecorder {
       }
       const name = field.name;
       let value = undefined;
-      if (field.name == "@blob") {
-        value = blobFileName;
-      } else if (field.value.oneofKind == "integer") {
+      if (field.value.oneofKind == "integer") {
         value = Number(field.value.integer);
       } else if (field.value.oneofKind == "string") {
         value = field.value.string;
@@ -217,7 +183,7 @@ class TelemetryRecorder {
       }
       const tmiv = next.value;
 
-      await this.write(recordDirectory, writable, tmiv);
+      await this.write(writable, tmiv);
       if (Date.now() - lastFlushTime > 10000) {
         lastFlushTime = Date.now();
         await writable.close();
