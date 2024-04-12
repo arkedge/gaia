@@ -203,9 +203,7 @@ export const TelemetryView: React.FC = () => {
     }
   };
 
-
-
-    const recording =
+  const recording =
     recorderStatus?.recordingTelemetries?.has(tmivName) ?? false;
 
   const recordingMenuItemsWhenRecording = (

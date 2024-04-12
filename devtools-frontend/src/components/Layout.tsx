@@ -34,7 +34,7 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
 }) => {
   const recorder = (useLoaderData() as ClientContext).client;
   const [recorderStatus, setRecordingStatus] = useState<RecordingStatus | null>(
-    null
+    null,
   );
   useEffect(() => {
     const readerP = recorder
@@ -120,15 +120,15 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
                 }`}
               >
                 <span onClick={() => toggleRecordingStatus(item.name)}>
-                  {recorderStatus?.recordingTelemetries.has(item.name)
-                    ? <div className="py-1">
-                        <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                      </div>
-                    : <div className="py-1">
-                        <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
-                      </div>
-
-                    }
+                  {recorderStatus?.recordingTelemetries.has(item.name) ? (
+                    <div className="py-1">
+                      <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
+                    </div>
+                  )}
                 </span>
                 <code
                   className={`${Classes.FILL} ${Classes.TEXT_OVERFLOW_ELLIPSIS}`}
@@ -156,10 +156,10 @@ export const Layout = () => {
     const items: TelemetryMenuItem[] = [];
     const channelNames = Object.keys(ctx.satelliteSchema.telemetryChannels);
     for (const [componentName, componentSchema] of Object.entries(
-      ctx.satelliteSchema.telemetryComponents
+      ctx.satelliteSchema.telemetryComponents,
     )) {
       for (const [telemetryName, telemetrySchema] of Object.entries(
-        componentSchema.telemetries
+        componentSchema.telemetries,
       )) {
         for (const channelName of channelNames) {
           const name = `${channelName}.${componentName}.${telemetryName}`;
