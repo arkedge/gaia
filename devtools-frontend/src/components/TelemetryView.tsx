@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeNamespace, addToNamespace, mapNamespace } from "../tree";
+import { Button } from "@blueprintjs/core";
 
 import { Tmiv, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
@@ -208,14 +209,14 @@ export const TelemetryView: React.FC = () => {
 
   const recordingMenuItemsWhenRecording = (
     <>
-      <li>Recording: ON</li>
-      <li onClick={toggleRecordingStatus}>Stop Recording</li>
+      <p>Recording: ON</p>
+      <Button onClick={toggleRecordingStatus}>Stop Recording</Button>
     </>
   );
   const recordingMenuItemsWhenNotRecording = (
     <>
-      <li>Recording: OFF</li>
-      <li onClick={toggleRecordingStatus}>Start Recording</li>
+      <p>Recording: OFF</p>
+      <Button onClick={toggleRecordingStatus}>Start Recording</Button>
     </>
   );
   return (
