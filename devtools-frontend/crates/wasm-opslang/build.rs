@@ -2,10 +2,14 @@ use std::process::Command;
 use std::{env, path::PathBuf};
 
 fn main() {
+    let out_dir = env::var("OUT_DIR").unwrap();
+
+    println!("cargo:out_dir={}", out_dir);
+
     let target = env::var("TARGET").unwrap();
 
     if !target.contains("wasm32") {
-        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+        let out_dir = PathBuf::from(out_dir);
 
         let status = Command::new("wasm-pack")
             .arg("build")
