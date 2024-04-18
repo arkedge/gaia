@@ -42,7 +42,7 @@ impl TmivBuilder {
         let apid = space_packet.primary_header.apid();
         let tlm_id = space_packet.secondary_header.telemetry_id();
         let Some(telemetry) = self.tlm_registry.lookup(apid, tlm_id) else {
-            return Err(anyhow!("unknown tlm_id: {tlm_id}"));
+            return Err(anyhow!("unknown tlm_id: {tlm_id} from apid: {apid}"));
         };
         let channels = self
             .tlm_registry
