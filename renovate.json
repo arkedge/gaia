@@ -50,6 +50,12 @@
       "allowedVersions": ["0.20.1"]
     },
     {
+      "groupName": "http",
+      "groupSlug": "http",
+      "matchPackageNames": ["http"],
+      "allowedVersions": ["0.2.11"]
+    },
+    {
       "groupName": "protobuf-ts",
       "groupSlug": "protobuf-ts",
       "packageNames": [
