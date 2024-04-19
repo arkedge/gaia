@@ -1,5 +1,6 @@
 # for local testing
 [patch.crates-io]
+structpack = { path = "structpack" }
 gaia-stub = { path = "gaia-stub" }
 gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
 gaia-tmtc = { path = "gaia-tmtc" }

@@ -8,4 +8,4 @@ edition = "2021"
 
 [dependencies]
 rust-embed = { version = "8.3.0", features = ["interpolate-folder-path", "debug-embed"] }
-opslang-wasm = { path = "crates/opslang-wasm", version = "0.7" }
+opslang-wasm = { path = "crates/opslang-wasm", version = "1.0" }

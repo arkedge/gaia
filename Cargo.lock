@@ -274,7 +274,7 @@ checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
 name = "c2a-devtools-frontend"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "opslang-wasm",
  "rust-embed",
@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-ccsds-c2a"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -613,14 +613,14 @@ dependencies = [
  "funty",
  "modular-bitfield-msb",
  "serde",
- "structpack 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structpack",
  "tlmcmddb",
  "zerocopy",
 ]
 
 [[package]]
 name = "gaia-stub"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "prost",
  "prost-types",
@@ -630,7 +630,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-tmtc"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1219,7 +1219,7 @@ dependencies = [
 
 [[package]]
 name = "opslang-wasm"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "async-recursion",
  "chrono",
@@ -2013,19 +2013,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "structpack"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "bitvec",
- "funty",
- "serde",
-]
-
-[[package]]
-name = "structpack"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda8a8b7cb706e40021a9076e0f9ece3ee30ae0f1043353ed88491292cd5b853"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -2172,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "tmtc-c2a"
-version = "0.7.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2197,7 +2185,7 @@ dependencies = [
  "sentry-tracing",
  "serde",
  "serde_json",
- "structpack 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structpack",
  "tlmcmddb",
  "tokio",
  "tokio-tungstenite",
