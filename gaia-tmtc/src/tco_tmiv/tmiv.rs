@@ -135,7 +135,7 @@ impl SchemaSet {
     pub fn validate(&self, normalized_tmiv: &Tmiv) -> Result<(), String> {
         let schema = self
             .find_schema_by_name(&normalized_tmiv.name)
-            .ok_or_else(|| format!("No matched schema for command {}", &normalized_tmiv.name))?;
+            .ok_or_else(|| format!("No matched schema for telemetry {}", &normalized_tmiv.name))?;
         schema.validate(normalized_tmiv)?;
         Ok(())
     }
