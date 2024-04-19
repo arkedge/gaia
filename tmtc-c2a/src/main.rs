@@ -17,8 +17,8 @@ use gaia_tmtc::{
 };
 use notalawyer_clap::*;
 use tmtc_c2a::proto::tmtc_generic_c2a::tmtc_generic_c2a_server::TmtcGenericC2aServer;
-use tonic::transport::{Channel, Server, Uri};
 use tonic::server::NamedService;
+use tonic::transport::{Channel, Server, Uri};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower::ServiceBuilder;
