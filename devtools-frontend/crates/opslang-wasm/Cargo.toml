@@ -28,7 +28,7 @@ async-recursion = "1.1.0"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 chrono = "0.4.38"
-regex = "1.10.3"
+regex = "1.10.4"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.42"
