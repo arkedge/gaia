@@ -268,7 +268,7 @@ checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
 name = "c2a-devtools-frontend"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "opslang-wasm",
  "rust-embed",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-ccsds-c2a"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-stub"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "prost",
  "prost-types",
@@ -645,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "gaia-tmtc"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1168,7 +1168,7 @@ dependencies = [
 
 [[package]]
 name = "opslang-wasm"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "async-recursion",
  "chrono",
@@ -1944,7 +1944,7 @@ dependencies = [
 
 [[package]]
 name = "structpack"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -2105,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "tmtc-c2a"
-version = "0.7.0-beta.4"
+version = "0.7.0-beta.5"
 dependencies = [
  "anyhow",
  "async-trait",
