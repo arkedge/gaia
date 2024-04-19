@@ -32,8 +32,8 @@ impl Hook<Arc<Tco>> for RecordHook {
     async fn hook(&mut self, tco: Arc<Tco>) -> Result<Self::Output> {
         let now = chrono::Utc::now().naive_utc();
         let timestamp = Timestamp {
-            seconds: now.timestamp(),
-            nanos: now.timestamp_subsec_nanos() as i32,
+            seconds: now.and_utc().timestamp(),
+            nanos: now.and_utc().timestamp_subsec_nanos() as i32,
         };
         self.recorder_client
             .post_command(PostCommandRequest {

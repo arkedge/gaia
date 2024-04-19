@@ -1,5 +1,5 @@
 use anyhow::{anyhow, ensure, Result};
-use futures::{future, SinkExt, TryStreamExt};
+use futures::{SinkExt, TryStreamExt};
 use gaia_ccsds_c2a::{
     ccsds::{
         aos,

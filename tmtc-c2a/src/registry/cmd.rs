@@ -134,7 +134,7 @@ impl Registry {
                                     data_type: data_type.into(),
                                 }
                             })
-                            .chain(trailer_parameter.into_iter())
+                            .chain(trailer_parameter)
                             .collect();
                         let command_name = command_name.to_string();
                         let command_schema = proto::CommandSchema {
