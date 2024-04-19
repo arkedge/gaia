@@ -3,6 +3,7 @@ name = "opslang-wasm"
 version.workspace = true
 description.workspace = true
 repository.workspace = true
+license.workspace = true
 edition = "2021"
 
 links = "opslang-wasm"

@@ -9,6 +9,7 @@ members = [
 version = "0.7.0-beta.5"
 description = "A command and control system for C2A-based satellites"
 repository = "https://github.com/arkedge/gaia"
+license = "MPL-2.0"
 
 # profile config should be set in workspace root
 [profile.release]

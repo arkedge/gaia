@@ -3,8 +3,8 @@ name = "c2a-devtools-frontend"
 version.workspace = true
 description.workspace = true
 repository.workspace = true
+license.workspace = true
 edition = "2021"
-license = "MPL-2.0"
 
 [dependencies]
 rust-embed = { version = "8.0.0", features = ["interpolate-folder-path", "debug-embed"] }
