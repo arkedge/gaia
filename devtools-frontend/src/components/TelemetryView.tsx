@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeNamespace, addToNamespace, mapNamespace } from "../tree";
+import { Button } from "@blueprintjs/core";
 
 import { Tmiv, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TelemetrySchema } from "../proto/tmtc_generic_c2a";
+import type { RecordingStatus } from "../worker";
 
 const buildTelemetryFieldTreeBlueprintFromSchema = (
   tlm: TelemetrySchema,
@@ -162,6 +164,74 @@ const InlineNamespaceContentCell: React.FC<InlineNamespaceContentCellProps> = ({
 };
 
 export const TelemetryView: React.FC = () => {
+  const { client } = useClient();
+  const [recorderStatus, setRecordingStatus] = useState<RecordingStatus | null>(
+    null,
+  );
+  const params = useParams();
+  const tmivName = params["tmivName"]!;
+  useEffect(() => {
+    const readerP = client
+      .openRecordingStatusStream()
+      .then((stream) => stream.getReader());
+    let cancel;
+    const cancelP = new Promise((resolve) => (cancel = resolve));
+    Promise.all([readerP, cancelP]).then(([reader]) => reader.cancel());
+    readerP.then(async (reader) => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const next = await reader.read();
+        if (next.done) {
+          break;
+        }
+        setRecordingStatus(next.value);
+      }
+    });
+    return cancel;
+  }, [client]);
+
+  const toggleRecordingStatus = async () => {
+    if (!recorderStatus?.directoryIsSet) {
+      const directoryHandle = await window.showDirectoryPicker({
+        mode: "readwrite",
+      });
+      client.setRootRecordDirectory(directoryHandle);
+    }
+    if (recorderStatus?.recordingTelemetries.has(tmivName)) {
+      client.disableRecording(tmivName);
+    } else {
+      client.enableRecording(tmivName);
+    }
+  };
+
+  const recording =
+    recorderStatus?.recordingTelemetries?.has(tmivName) ?? false;
+
+  const recordingMenuItemsWhenRecording = (
+    <>
+      <p>Recording: ON</p>
+      <Button onClick={toggleRecordingStatus}>Stop Recording</Button>
+    </>
+  );
+  const recordingMenuItemsWhenNotRecording = (
+    <>
+      <p>Recording: OFF</p>
+      <Button onClick={toggleRecordingStatus}>Start Recording</Button>
+    </>
+  );
+  return (
+    <div className="p-1 h-full flex-1 flex flex-col">
+      <nav>
+        {recording
+          ? recordingMenuItemsWhenRecording
+          : recordingMenuItemsWhenNotRecording}
+      </nav>
+      <TelemetryViewBody />
+    </div>
+  );
+};
+
+const TelemetryViewBody: React.FC = () => {
   const params = useParams();
   const tmivName = params["tmivName"]!;
   const {
