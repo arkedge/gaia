@@ -186,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "opslang-wasm"
-version = "0.7.0-beta.5"
+version = "0.7.0"
 dependencies = [
  "async-recursion",
  "chrono",
@@ -493,16 +493,16 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[patch.unused]]
 name = "c2a-devtools-frontend"
-version = "0.7.0-beta.5"
+version = "0.7.0"
 
 [[patch.unused]]
 name = "gaia-ccsds-c2a"
-version = "0.7.0-beta.5"
+version = "0.7.0"
 
 [[patch.unused]]
 name = "gaia-stub"
-version = "0.7.0-beta.5"
+version = "0.7.0"
 
 [[patch.unused]]
 name = "gaia-tmtc"
-version = "0.7.0-beta.5"
+version = "0.7.0"
