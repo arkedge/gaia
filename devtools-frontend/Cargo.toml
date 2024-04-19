@@ -8,4 +8,4 @@ repository = "https://github.com/arkedge/gaia"
 
 [dependencies]
 rust-embed = { version = "8.0.0", features = ["interpolate-folder-path", "debug-embed"] }
-wasm-opslang = { path = "crates/wasm-opslang", version = "0.7.0-beta.3" }
+opslang-wasm = { path = "crates/opslang-wasm", version = "0.7.0-beta.3" }

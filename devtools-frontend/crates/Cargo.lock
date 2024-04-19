@@ -185,6 +185,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "opslang-wasm"
+version = "0.7.0-beta.3"
+dependencies = [
+ "async-recursion",
+ "chrono",
+ "console_error_panic_hook",
+ "opslang-ast",
+ "opslang-parser",
+ "regex",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
 name = "peg"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -390,22 +406,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "wasm-opslang"
-version = "0.7.0-beta.3"
-dependencies = [
- "async-recursion",
- "chrono",
- "console_error_panic_hook",
- "opslang-ast",
- "opslang-parser",
- "regex",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]

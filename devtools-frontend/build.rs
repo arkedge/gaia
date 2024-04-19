@@ -33,10 +33,10 @@ fn main() {
     // parepare crate dir
     let crate_root_dir = out_dir.join("crate_root");
 
-    // copy wasm-opslang dist
+    // copy opslang-wasm dist
     {
-        let opslang_pkg_dir = env::var("DEP_WASM_OPSLANG_OUT_DIR").unwrap();
-        let opslang_dist_dir = crate_root_dir.join("wasm-opslang").join("pkg");
+        let opslang_pkg_dir = env::var("DEP_OPSLANG_WASM_OUT_DIR").unwrap();
+        let opslang_dist_dir = crate_root_dir.join("opslang-wasm").join("pkg");
 
         copy_devtools_dir(opslang_pkg_dir, opslang_dist_dir).unwrap();
     }
