@@ -153,11 +153,11 @@ mod tests {
             bytes
         };
         defrag.push(&m_pdu1).unwrap();
-        let packet = defrag.read().unwrap();
+        let packet = defrag.read_as_bytes_and_packet().unwrap().1;
         assert_eq!(1, packet.packet_data.len());
         assert_eq!(0xDE, packet.packet_data[0]);
         let size = packet.packet_size().unwrap();
         assert_eq!(defrag.advance(), size);
-        assert!(defrag.read().is_none());
+        assert!(defrag.read_as_bytes_and_packet().is_none());
     }
 }
