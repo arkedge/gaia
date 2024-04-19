@@ -18,14 +18,14 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.7.0-beta.3"
+version = "0.7.0-beta.4"
 description = "A command and control system for C2A-based satellites"
 repository = "https://github.com/arkedge/gaia"
 
 [workspace.dependencies]
 structpack = "0.6"
 
-gaia-stub = "0.7.0-beta.3"
-gaia-ccsds-c2a = "0.7.0-beta.3"
-gaia-tmtc = "0.7.0-beta.3"
-c2a-devtools-frontend = "0.7.0-beta.3"
+gaia-stub = "0.7.0-beta.4"
+gaia-ccsds-c2a = "0.7.0-beta.4"
+gaia-tmtc = "0.7.0-beta.4"
+c2a-devtools-frontend = "0.7.0-beta.4"
