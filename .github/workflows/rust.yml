@@ -57,6 +57,7 @@ jobs:
         uses: sksat/action-clippy@v0.7.1
         with:
           reporter: github-pr-review
+          clippy_flags: --locked
 
       - name: format
         run: |
@@ -64,4 +65,4 @@ jobs:
 
       - name: unit test
         run: |
-          cargo test
+          cargo test --locked
