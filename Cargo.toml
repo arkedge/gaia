@@ -24,7 +24,7 @@ repository = "https://github.com/arkedge/gaia"
 license = "MPL-2.0"
 
 [workspace.dependencies]
-structpack = "0.6"
+structpack = "0.7"
 
 gaia-stub = "0.7"
 gaia-ccsds-c2a = "0.7"

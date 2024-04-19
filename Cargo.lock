@@ -628,7 +628,7 @@ dependencies = [
  "funty",
  "modular-bitfield-msb",
  "serde",
- "structpack 0.6.0",
+ "structpack 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tlmcmddb",
  "zerocopy",
 ]
@@ -1932,9 +1932,7 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "structpack"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "177c21a9780e03494720b18999dc6a5fa0b553c51d59d33cff7f086e37631c7e"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -1945,6 +1943,8 @@ dependencies = [
 [[package]]
 name = "structpack"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fda8a8b7cb706e40021a9076e0f9ece3ee30ae0f1043353ed88491292cd5b853"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -2130,7 +2130,7 @@ dependencies = [
  "sentry-tracing",
  "serde",
  "serde_json",
- "structpack 0.6.0",
+ "structpack 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tlmcmddb",
  "tokio",
  "tokio-tungstenite",
