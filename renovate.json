@@ -48,7 +48,7 @@
       "groupSlug": "tungstenite",
       "matchPackageNames": ["tokio-tungstenite"],
       "allowedVersions": ["0.20.1"]
-    }
+    },
     {
       "groupName": "protobuf-ts",
       "groupSlug": "protobuf-ts",
