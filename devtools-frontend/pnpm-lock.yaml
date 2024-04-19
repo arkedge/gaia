@@ -16,7 +16,7 @@ dependencies:
     version: 4.6.0(monaco-editor@0.44.0)(react-dom@18.2.0)(react@18.2.0)
   '@protobuf-ts/grpcweb-transport':
     specifier: ^2.8.2
-    version: 2.9.3
+    version: 2.9.4
   '@protobuf-ts/runtime':
     specifier: ^2.9.3
     version: 2.9.3
@@ -741,11 +741,11 @@ packages:
     resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
     dev: false
 
-  /@protobuf-ts/grpcweb-transport@2.9.3:
-    resolution: {integrity: sha512-BP9oThZzrr1WJKJZKJ/o5yiDVaQe/T95Ef9eDZAkBbW6ObSnUAPi0I03xeJF8sjn6gRXabCSfpBbDXlxCefKEw==}
+  /@protobuf-ts/grpcweb-transport@2.9.4:
+    resolution: {integrity: sha512-6aQgwPTgX6FkqWqmNts3uk8T/C5coJoH7U87zgaZY/Wo2EVa9SId5bXTM8uo4WR+CN8j9W4c9ij1yG13Hc3xUw==}
     dependencies:
-      '@protobuf-ts/runtime': 2.9.3
-      '@protobuf-ts/runtime-rpc': 2.9.3
+      '@protobuf-ts/runtime': 2.9.4
+      '@protobuf-ts/runtime-rpc': 2.9.4
     dev: false
 
   /@protobuf-ts/plugin-framework@2.9.4:
@@ -781,7 +781,6 @@ packages:
     resolution: {integrity: sha512-y9L9JgnZxXFqH5vD4d7j9duWvIJ7AShyBRoNKJGhu9Q27qIbchfzli66H9RvrQNIFk5ER7z1Twe059WZGqERcA==}
     dependencies:
       '@protobuf-ts/runtime': 2.9.4
-    dev: true
 
   /@protobuf-ts/runtime@2.9.3:
     resolution: {integrity: sha512-nivzCpg/qYD0RX2OmHOahJALb8ndjGmUhNBcTJ0BbXoqKwCSM6vYA+vegzS3rhuaPgbyC7Ec8idlnizzUfIRuw==}
@@ -789,7 +788,6 @@ packages:
 
   /@protobuf-ts/runtime@2.9.4:
     resolution: {integrity: sha512-vHRFWtJJB/SiogWDF0ypoKfRIZ41Kq+G9cEFj6Qm1eQaAhJ1LDFvgZ7Ja4tb3iLOQhz0PaoPnnOijF1qmEqTxg==}
-    dev: true
 
   /@remix-run/router@1.15.3:
     resolution: {integrity: sha512-Oy8rmScVrVxWZVOpEF57ovlnhpZ8CCPlnIIumVcV9nFdiSIrus99+Lw78ekXyGvVDlIsFJbSfmSovJUhCWYV3w==}
