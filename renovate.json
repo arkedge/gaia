@@ -17,8 +17,8 @@
       "packageNames": ["sentry", "sentry-tracing"]
     },
     {
-      "groupName": "tonic",
-      "groupSlug": "tonic",
+      "groupName": "http-grpc",
+      "groupSlug": "http-grpc",
       "packageNames": [
         "tonic",
         "tonic-build",
@@ -27,7 +27,22 @@
         "tonic-web",
         "prost",
         "prost-types",
-        "prost-derive"
+        "prost-derive",
+        "http",
+        "axum",
+        "tokio-tungstenite",
+        "kble-socket",
+        "tower",
+        "tower-http"
+      ]
+    },
+    {
+      "groupName": "protobuf-ts",
+      "groupSlug": "protobuf-ts",
+      "packageNames": [
+        "@protobuf-ts/runtime-rpc",
+        "@protobuf-ts/runtime",
+        "@protobuf-ts/grpcweb-transport"
       ]
     }
   ]
