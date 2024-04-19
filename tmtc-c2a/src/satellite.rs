@@ -11,7 +11,7 @@ use gaia_ccsds_c2a::{
     ccsds::{self, aos, tc},
     ccsds_c2a::{
         self,
-        aos::{virual_channel::Demuxer, SpacePacket},
+        aos::{virtual_channel::Demuxer, SpacePacket},
         tc::{segment, space_packet},
     },
 };
