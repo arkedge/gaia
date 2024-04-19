@@ -56,6 +56,12 @@
       "allowedVersions": ["0.2.11"]
     },
     {
+      "groupName": "tower-http",
+      "groupSlug": "tower-http",
+      "matchPackageNames": ["tower-http"],
+      "allowedVersions": ["0.4.4"]
+    },
+    {
       "groupName": "protobuf-ts",
       "groupSlug": "protobuf-ts",
       "packageNames": [
