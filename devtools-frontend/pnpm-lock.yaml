@@ -23,6 +23,9 @@ dependencies:
   '@protobuf-ts/runtime-rpc':
     specifier: ^2.9.3
     version: 2.9.3
+  c2a-devtools:
+    specifier: 'link:'
+    version: 'link:'
   monaco-editor:
     specifier: ^0.44.0
     version: 0.44.0
@@ -55,6 +58,9 @@ devDependencies:
   '@types/react-dom':
     specifier: 18.2.21
     version: 18.2.21
+  '@types/wicg-file-system-access':
+    specifier: ^2023.10.4
+    version: 2023.10.5
   '@typescript-eslint/eslint-plugin':
     specifier: 7.2.0
     version: 7.2.0(@typescript-eslint/parser@7.2.0)(eslint@8.57.0)(typescript@5.4.2)
@@ -946,6 +952,10 @@ packages:
 
   /@types/semver@7.5.6:
     resolution: {integrity: sha512-dn1l8LaMea/IjDoHNd9J52uBbInB796CDffS6VdIxvqYCPSG0V0DzHp76GpaWnlhg88uYyPbXCDIowa86ybd5A==}
+    dev: true
+
+  /@types/wicg-file-system-access@2023.10.5:
+    resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
     dev: true
 
   /@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0)(eslint@8.57.0)(typescript@5.4.2):

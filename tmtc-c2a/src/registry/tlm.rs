@@ -47,6 +47,7 @@ impl<'a> Display for TmivName<'a> {
 pub struct TelemetrySchema {
     pub integral_fields: Vec<(FieldMetadata, IntegralFieldSchema)>,
     pub floating_fields: Vec<(FieldMetadata, FloatingFieldSchema)>,
+    pub blob_field: Option<(FieldMetadata, usize /* starting position */)>,
 }
 
 #[derive(Debug, Clone)]
@@ -173,7 +174,7 @@ impl Registry {
             let apids = rev_apid_map
                 .get(metadata.component_name.as_str())
                 .ok_or_else(|| anyhow!("APID not defined for {}", metadata.component_name))?;
-            let schema = build_telemetry_schema(fields)?;
+            let schema = build_telemetry_schema(fields.iter_fields())?;
             for apid in apids {
                 let metadata = metadata.clone();
                 let schema = schema.clone();
@@ -200,6 +201,7 @@ fn build_telemetry_schema<'a>(
     let mut schema = TelemetrySchema {
         integral_fields: vec![],
         floating_fields: vec![],
+        blob_field: None,
     };
     for (order, pair) in iter.enumerate() {
         let (field_name, field_schema) = pair?;
@@ -210,6 +212,9 @@ fn build_telemetry_schema<'a>(
             }
             FieldSchema::Floating(field_schema) => {
                 schema.floating_fields.push((name_pair, field_schema));
+            }
+            FieldSchema::Blob { start_position } => {
+                schema.blob_field = Some((name_pair, start_position));
             }
         }
     }

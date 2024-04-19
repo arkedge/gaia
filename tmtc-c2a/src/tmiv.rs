@@ -56,9 +56,26 @@ impl<'a> FieldsBuilder<'a> {
         Ok(())
     }
 
+    pub fn build_blob_field(
+        &self,
+        fields: &mut Vec<TmivField>,
+        space_packet_bytes: &[u8],
+    ) -> Result<()> {
+        if let Some((name_pair, position)) = &self.schema.blob_field {
+            fields.push(TmivField {
+                name: name_pair.raw_name.to_string(),
+                value: Some(tmiv_field::Value::Bytes(
+                    space_packet_bytes[*position..].to_vec(),
+                )),
+            });
+        }
+        Ok(())
+    }
+
     pub fn build(&self, tmiv_fields: &mut Vec<TmivField>, space_packet_bytes: &[u8]) -> Result<()> {
         self.build_integral_fields(tmiv_fields, space_packet_bytes)?;
         self.build_floating_fields(tmiv_fields, space_packet_bytes)?;
+        self.build_blob_field(tmiv_fields, space_packet_bytes)?;
         Ok(())
     }
 }
