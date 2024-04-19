@@ -22,7 +22,7 @@ dependencies:
     version: 2.9.4
   '@protobuf-ts/runtime-rpc':
     specifier: ^2.9.3
-    version: 2.9.3
+    version: 2.9.4
   monaco-editor:
     specifier: ^0.44.0
     version: 0.44.0
@@ -772,12 +772,6 @@ packages:
     resolution: {integrity: sha512-hQX+nOhFtrA+YdAXsXEDrLoGJqXHpgv4+BueYF0S9hy/Jq0VRTVlJS1Etmf4qlMt/WdigEes5LOd/LDzui4GIQ==}
     hasBin: true
     dev: true
-
-  /@protobuf-ts/runtime-rpc@2.9.3:
-    resolution: {integrity: sha512-WelHpctvZeG8yhbb7tnsrLzotq9xjMCXuGuhJ8qMyEdNoBBEodbXseofAYFTebo2/PN2LzyEq3X6vwr5f8jqTA==}
-    dependencies:
-      '@protobuf-ts/runtime': 2.9.4
-    dev: false
 
   /@protobuf-ts/runtime-rpc@2.9.4:
     resolution: {integrity: sha512-y9L9JgnZxXFqH5vD4d7j9duWvIJ7AShyBRoNKJGhu9Q27qIbchfzli66H9RvrQNIFk5ER7z1Twe059WZGqERcA==}
