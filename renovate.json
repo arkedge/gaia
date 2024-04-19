@@ -33,8 +33,15 @@
         "tokio-tungstenite",
         "kble-socket",
         "tower",
-        "tower-http"
+        "tower-http",
+        "http"
       ]
+    },
+    {
+      "groupName": "axum",
+      "groupSlug": "axum",
+      "matchPackageNames": ["axum"],
+      "allowedVersions": ["0.6.20"]
     },
     {
       "groupName": "protobuf-ts",
