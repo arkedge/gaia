@@ -10,7 +10,7 @@
     "crate:build": "cd crates && wasm-pack build --weak-refs --target web --release",
     "crate:dev": "cd crates && cargo watch -s 'wasm-pack build --weak-refs --target web --dev' -C",
     "crate": "pnpm run crate:${MODE:-build}",
-    "crates:wasm-opslang": "pnpm run crate wasm-opslang",
+    "crates:opslang-wasm": "pnpm run crate opslang-wasm",
     "dev:crates": "MODE=dev run-p crates:*",
     "dev:vite": "vite --host",
     "dev": "run-p dev:*",
