@@ -16,7 +16,7 @@ importers:
         version: 5.9.0(@types/react@18.2.79)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@monaco-editor/react':
         specifier: ^4.5.0
-        version: 4.6.0(monaco-editor@0.47.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 4.6.0(monaco-editor@0.48.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@protobuf-ts/grpcweb-transport':
         specifier: ^2.8.2
         version: 2.9.4
@@ -27,8 +27,8 @@ importers:
         specifier: ^2.9.3
         version: 2.9.4
       monaco-editor:
-        specifier: ^0.47.0
-        version: 0.47.0
+        specifier: ^0.48.0
+        version: 0.48.0
       react:
         specifier: 18.2.0
         version: 18.2.0
@@ -1405,8 +1405,8 @@ packages:
     resolution: {integrity: sha512-jYofLM5Dam9279rdkWzqHozUo4ybjdZmCsDHePy5V/PbBcVMiSZR97gmAy45aqi8CK1lG2ECd356FU86avfwUQ==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  monaco-editor@0.47.0:
-    resolution: {integrity: sha512-VabVvHvQ9QmMwXu4du008ZDuyLnHs9j7ThVFsiJoXSOQk18+LF89N4ADzPbFenm0W4V2bGHnFBztIRQTgBfxzw==}
+  monaco-editor@0.48.0:
+    resolution: {integrity: sha512-goSDElNqFfw7iDHMg8WDATkfcyeLTNpBHQpO8incK6p5qZt5G/1j41X0xdGzpIkGojGXM+QiRQyLjnfDVvrpwA==}
 
   ms@2.1.2:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
@@ -2334,15 +2334,15 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@monaco-editor/loader@1.4.0(monaco-editor@0.47.0)':
+  '@monaco-editor/loader@1.4.0(monaco-editor@0.48.0)':
     dependencies:
-      monaco-editor: 0.47.0
+      monaco-editor: 0.48.0
       state-local: 1.0.7
 
-  '@monaco-editor/react@4.6.0(monaco-editor@0.47.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+  '@monaco-editor/react@4.6.0(monaco-editor@0.48.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
-      '@monaco-editor/loader': 1.4.0(monaco-editor@0.47.0)
-      monaco-editor: 0.47.0
+      '@monaco-editor/loader': 1.4.0(monaco-editor@0.48.0)
+      monaco-editor: 0.48.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
@@ -3473,7 +3473,7 @@ snapshots:
 
   minipass@7.0.4: {}
 
-  monaco-editor@0.47.0: {}
+  monaco-editor@0.48.0: {}
 
   ms@2.1.2: {}
 
