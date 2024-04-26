@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: checkout all the submodules
-        uses: actions/checkout@v4.1.3
+        uses: actions/checkout@v4.1.4
         with:
           submodules: recursive
 
