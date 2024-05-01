@@ -10,7 +10,7 @@ license = "MPL-2.0"
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
-bitvec = "1"
+bitvec = "1.0.1"
 crc = "3"
 funty = "2"
 modular-bitfield-msb = "0.11"
