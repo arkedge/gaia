@@ -11,7 +11,7 @@ edition = "2021"
 [dependencies]
 funty = "2"
 anyhow = { version = "1", features = ["backtrace"] }
-async-trait = "0.1"
+async-trait = "0.1.80"
 chrono = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
