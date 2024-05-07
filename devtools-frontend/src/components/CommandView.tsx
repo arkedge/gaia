@@ -261,7 +261,7 @@ class Driver implements opslang.Driver {
         executorComponent,
         command,
       },
-      parameters: fullParams.map((arg): ParameterValue => {
+      parameters: fullParams.map((arg: opslang.Value): ParameterValue => {
         if (arg.kind === "integer") {
           return {
             type: "integer",
@@ -271,6 +271,12 @@ class Driver implements opslang.Driver {
           return {
             type: "double",
             double: arg.value,
+          };
+        } else if (arg.kind === "bytes") {
+          return {
+            type: "bytes",
+            bytes: arg.value,
+            bigint: BigInt(0), // dummy ???
           };
         } else if (arg.kind === "datetime") {
           const datetimeOrigin = this.datetimeOrigin.get(receiverComponent);

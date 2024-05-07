@@ -225,6 +225,7 @@ impl Runner {
                 .collect::<Result<_, _>>()
                 .map(Value::Array),
             Numeric(num, s) => self.numeric(num, s),
+            Bytes(b) => Ok(Value::Bytes(b.clone())),
             String(s) => Ok(Value::String((*s).to_owned())),
             DateTime(d) => Ok(Value::DateTime(*d)),
             TlmId(tlm_id) => {
@@ -386,7 +387,7 @@ impl Runner {
                     Double(x) => Ok(Double(-x)),
                     Bool(x) => Ok(Bool(!x)),
                     Duration(x) => Ok(Duration(-x)),
-                    Array(_) | String(_) | DateTime(_) => {
+                    Array(_) | String(_) | DateTime(_) | Bytes(_) => {
                         type_err("numeric, bool, or duration", &v)
                     }
                 }
@@ -401,6 +402,7 @@ impl Runner {
             Double(x) => x.partial_cmp(&right.double()?),
             Bool(x) => Some(x.cmp(&right.bool()?)),
             Array(_) => return type_err("comparable", left),
+            Bytes(_) => return type_err("comparable", left),
             String(x) => Some(x[..].cmp(right.string()?)),
             Duration(x) => Some(x.cmp(&right.duration()?)),
             DateTime(x) => Some(x.cmp(&right.datetime()?)),
