@@ -7,6 +7,7 @@ pub(crate) enum Value {
     Double(f64),
     Bool(bool),
     Array(Vec<Value>),
+    Bytes(Vec<u8>),
     String(String),
     Duration(chrono::Duration),
     DateTime(chrono::DateTime<chrono::Utc>),
@@ -50,6 +51,7 @@ impl Value {
             Double(_) => "double",
             Bool(_) => "bool",
             Array(_) => "array",
+            Bytes(_) => "bytes",
             String(_) => "string",
             Duration(_) => "duration",
             DateTime(_) => "datetime",
@@ -79,6 +81,13 @@ impl Value {
         match self {
             Value::String(x) => Ok(x),
             _ => type_err("string", self),
+        }
+    }
+
+    pub fn bytes(&self) -> Result<&[u8]> {
+        match self {
+            Value::Bytes(x) => Ok(x),
+            _ => type_err("bytes", self),
         }
     }
 
