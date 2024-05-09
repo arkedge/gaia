@@ -54,7 +54,7 @@ jobs:
         run: cargo install wasm-pack --locked
 
       - name: reviewdog / clippy
-        uses: sksat/action-clippy@v0.7.1
+        uses: sksat/action-clippy@v0.8.0
         with:
           reporter: github-pr-review
           clippy_flags: --locked
