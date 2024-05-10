@@ -35,9 +35,9 @@ sentry = { version = "0.34", default-features = false, features = ["backtrace", 
 sentry-tracing = "0.34"
 tlmcmddb = { git = "https://github.com/arkedge/c2a-tlmcmddb", branch = "main" }
 structpack.workspace = true
-gaia-ccsds-c2a.workspace = true
-gaia-tmtc.workspace = true
-c2a-devtools-frontend = { workspace = true, optional = true }
+gaia-ccsds-c2a = { path = "../gaia-ccsds-c2a" }
+gaia-tmtc = { path = "../gaia-tmtc" }
+c2a-devtools-frontend = { path = "../devtools-frontend", optional = true }
 kble-socket = { version = "0.3.0", features = ["tungstenite"] }
 tokio-tungstenite = "0.20.1"
 itertools = "0.12.1"
