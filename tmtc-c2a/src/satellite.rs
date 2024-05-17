@@ -40,7 +40,16 @@ impl TmivBuilder {
         let space_packet = SpacePacket::from_generic(space_packet)
             .ok_or_else(|| anyhow!("space packet is too short"))?;
         let apid = space_packet.primary_header.apid();
-        let tlm_id = space_packet.secondary_header.telemetry_id();
+        let mut tlm_id = space_packet.secondary_header.telemetry_id();
+
+        if let Some(telemetry) = self.tlm_registry.lookup(apid, 0) {
+            use crate::registry::TelemetrySchema;
+            if let TelemetrySchema::Blob = telemetry.schema {
+                tracing::trace!(apid, tlm_id, "overriding tlm_id to 0 for blob telemetry");
+                tlm_id = 0;
+            }
+        }
+
         let Some(telemetry) = self.tlm_registry.lookup(apid, tlm_id) else {
             return Err(anyhow!("unknown tlm_id: {tlm_id} from apid: {apid}"));
         };
