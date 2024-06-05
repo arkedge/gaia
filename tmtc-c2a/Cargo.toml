@@ -31,8 +31,8 @@ tonic-reflection = "0.11"
 tonic-web = "0.11"
 axum = { version = "0.6", default-features = false, features = ["http1", "tokio"] }
 mime_guess = "2.0.4"
-sentry = { version = "0.32", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
-sentry-tracing = "0.32"
+sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
+sentry-tracing = "0.34"
 tlmcmddb = "2.5.1"
 structpack.workspace = true
 gaia-ccsds-c2a.workspace = true
