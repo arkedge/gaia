@@ -17,6 +17,7 @@ pub fn set_panic_hook() {
 type Result<T, E = RuntimeError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum RuntimeError {
     ParseIntError(std::num::ParseIntError),
     ParseFloatError(std::num::ParseFloatError),
