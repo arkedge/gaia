@@ -18,18 +18,18 @@ pub struct Metadata {
 
 #[derive(Debug, Clone)]
 pub struct CommandSchema {
-    pub sized_parameters: Vec<ParamField>,
+    pub sized_parameters: Vec<ParameterField>,
     pub static_size: usize,
     pub has_trailer_parameter: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct ParamField {
+pub struct ParameterField {
     pub value: NumericField,
     pub description: String,
 }
 
-impl SizedField for ParamField {
+impl SizedField for ParameterField {
     type Value<'a> = NumericValue;
 
     fn read<'a>(&self, bytes: &'a [u8]) -> Result<Self::Value<'a>> {
@@ -53,7 +53,7 @@ impl CommandSchema {
     pub fn build_writer<'b>(
         &'b self,
         bytes: &'b mut [u8],
-    ) -> Writer<'b, std::slice::Iter<'b, ParamField>> {
+    ) -> Writer<'b, std::slice::Iter<'b, ParameterField>> {
         Writer::new(
             self.sized_parameters.iter(),
             self.static_size,
@@ -120,7 +120,7 @@ fn build_schema(db: &cmddb::Command) -> Result<CommandSchema> {
     for parameter in params_iter.by_ref() {
         if let Some(field) = build_numeric_field(static_size_bits, parameter) {
             static_size_bits += field.bit_len();
-            sized_parameters.push(ParamField {
+            sized_parameters.push(ParameterField {
                 value: field,
                 description: parameter.description.clone(),
             });
