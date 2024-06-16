@@ -37,7 +37,9 @@ impl Socket {
             let leak_fut = async {
                 loop {
                     if let Some((_, resp_tx)) = self.cmd_rx.recv().await {
-                        if let Err(e) = resp_tx.send(Err(anyhow!("kble socket to satellite is not ready"))){
+                        if let Err(e) =
+                            resp_tx.send(Err(anyhow!("kble socket to satellite is not ready")))
+                        {
                             break e;
                         }
                     }
@@ -58,7 +60,9 @@ impl Socket {
                         .await
                         .ok_or_else(|| anyhow!("command sender has gone"))?;
                     sink.send(cmd_bytes.into()).await?;
-                    resp_tx.send(Ok(())).map_err(|_| anyhow!("response receiver has gone"))?;
+                    resp_tx
+                        .send(Ok(()))
+                        .map_err(|_| anyhow!("response receiver has gone"))?;
                 }
             };
             let downlink = async {
@@ -143,7 +147,7 @@ impl tc::SyncAndChannelCoding for Uplink {
     ) -> Result<()> {
         let tf_bytes = build_tf(scid, vcid, frame_type, sequence_number, data)?;
         let (resp_tx, resp_rx) = oneshot::channel();
-        self.cmd_tx.send((tf_bytes,resp_tx)).await?;
+        self.cmd_tx.send((tf_bytes, resp_tx)).await?;
         resp_rx.await??;
         Ok(())
     }
