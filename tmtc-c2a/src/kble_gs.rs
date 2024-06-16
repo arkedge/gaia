@@ -59,9 +59,9 @@ impl Socket {
                         .recv()
                         .await
                         .ok_or_else(|| anyhow!("command sender has gone"))?;
-                    sink.send(cmd_bytes.into()).await?;
+                    let res = sink.send(cmd_bytes.into()).await;
                     resp_tx
-                        .send(Ok(()))
+                        .send(res)
                         .map_err(|_| anyhow!("response receiver has gone"))?;
                 }
             };
