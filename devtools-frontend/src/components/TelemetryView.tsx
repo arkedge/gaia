@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeNamespace, addToNamespace, mapNamespace } from "../tree";
+import { Button, Checkbox } from "@blueprintjs/core";
 
 import { Tmiv, TmivField } from "../proto/tco_tmiv";
 import { useClient } from "./Layout";
@@ -189,6 +190,8 @@ export const TelemetryView: React.FC = () => {
     return cancel;
   }, [client]);
 
+  const [recordSingleFile, setRecordSingleFile] = useState(true);
+
   const toggleRecordingStatus = async () => {
     if (!recorderStatus?.directoryIsSet) {
       const directoryHandle = await window.showDirectoryPicker({
@@ -199,25 +202,31 @@ export const TelemetryView: React.FC = () => {
     if (recorderStatus?.recordingTelemetries.has(tmivName)) {
       client.disableRecording(tmivName);
     } else {
-      client.enableRecording(tmivName);
+      client.enableRecording(tmivName, recordSingleFile);
     }
   };
 
-
-
-    const recording =
+  const recording =
     recorderStatus?.recordingTelemetries?.has(tmivName) ?? false;
 
   const recordingMenuItemsWhenRecording = (
     <>
       <li>Recording: ON</li>
-      <li onClick={toggleRecordingStatus}>Stop Recording</li>
+      <Button onClick={toggleRecordingStatus}> Stop Recording </Button>
     </>
   );
   const recordingMenuItemsWhenNotRecording = (
     <>
       <li>Recording: OFF</li>
-      <li onClick={toggleRecordingStatus}>Start Recording</li>
+      <Button onClick={toggleRecordingStatus}> Start Recording </Button>
+      <Checkbox
+        checked={recordSingleFile}
+        onChange={() => {
+          setRecordSingleFile((b) => !b);
+        }}
+      >
+        Record blob as a single file
+      </Checkbox>
     </>
   );
   return (

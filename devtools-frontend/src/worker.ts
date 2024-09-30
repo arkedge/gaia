@@ -21,7 +21,7 @@ export type GrpcClientService = {
 
   setRootRecordDirectory(directory: FileSystemDirectoryHandle): Promise<void>;
   hasRecordDirectory(): Promise<boolean>;
-  enableRecording(telemetryName: string): Promise<void>;
+  enableRecording(telemetryName: string, singleFile: boolean): Promise<void>;
   disableRecording(telemetryName: string): Promise<void>;
   openRecordingStatusStream(): Promise<ReadableStream<RecordingStatus>>;
 };
@@ -109,15 +109,19 @@ const notifyRecordingStatusListener = (): void => {
 // TODO: flush on worker termination
 class TelemetryRecorder {
   telemetryName: string;
+  singleBlobFile: boolean;
+  lastBlobFileName?: string;
   cancel: () => void = () => {};
   cancelled: Promise<null>;
   onStop: () => void;
   constructor(
     rootRecordDirectory: FileSystemDirectoryHandle,
     telemetryName: string,
+    singleBlobFile: boolean,
     onStop: () => void,
   ) {
     this.telemetryName = telemetryName;
+    this.singleBlobFile = singleBlobFile;
     this.cancelled = new Promise((resolve) => {
       this.cancel = () => resolve(null);
     });
@@ -146,15 +150,30 @@ class TelemetryRecorder {
           },
         );
 
-        // FIXME: readable time format?
-        // FIXME: avoid name collision
-        blobFileName = `${Date.now()}.dat`;
-        const recordFile = await blobDirectory.getFileHandle(blobFileName, {
-          create: true,
-        });
-        const blobWritable = await recordFile.createWritable();
-        await blobWritable.write(blobBytes);
-        await blobWritable.close();
+        if (this.singleBlobFile) {
+          if (this.lastBlobFileName === undefined) {
+            this.lastBlobFileName = `${Date.now()}.dat`;
+          }
+          blobFileName = this.lastBlobFileName;
+          const recordFile = await blobDirectory.getFileHandle(blobFileName, {
+            create: true,
+          });
+          const blobWritable = await recordFile.createWritable();
+          const size = (await recordFile.getFile()).size;
+          await blobWritable.seek(size);
+          await blobWritable.write(blobBytes);
+          await blobWritable.close();
+        } else {
+          // FIXME: readable time format?
+          // FIXME: avoid name collision
+          blobFileName = `${Date.now()}.dat`;
+          const recordFile = await blobDirectory.getFileHandle(blobFileName, {
+            create: true,
+          });
+          const blobWritable = await recordFile.createWritable();
+          await blobWritable.write(blobBytes);
+          await blobWritable.close();
+        }
       }
     }
 
@@ -185,6 +204,7 @@ class TelemetryRecorder {
   }
 
   private async run(rootRecordDirectory: FileSystemDirectoryHandle) {
+    console.log("recording started", this.telemetryName);
     // FIXME: safer name construction
     const recordDirectoryName = this.telemetryName;
     const recordDirectory = await rootRecordDirectory.getDirectoryHandle(
@@ -208,6 +228,7 @@ class TelemetryRecorder {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      console.log("receiveng telemetry", this.telemetryName);
       const next = await Promise.race([reader.read(), this.cancelled]);
       if (next === null) {
         // cancelled
@@ -282,7 +303,10 @@ const server = {
     return rootRecordDirectory !== undefined;
   },
 
-  async enableRecording(telemetryName: string): Promise<void> {
+  async enableRecording(
+    telemetryName: string,
+    singleFile: boolean,
+  ): Promise<void> {
     if (rootRecordDirectory === undefined) {
       return;
     }
@@ -293,6 +317,7 @@ const server = {
     const recorder = new TelemetryRecorder(
       rootRecordDirectory,
       telemetryName,
+      singleFile,
       () => {
         recorders.delete(telemetryName);
         notifyRecordingStatusListener();
