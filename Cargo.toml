@@ -25,7 +25,7 @@ license = "MPL-2.0"
 
 [workspace.dependencies]
 structpack = "1.2"
-gaia-stub = "1.2"
-gaia-ccsds-c2a = "1.2"
-gaia-tmtc = "1.2"
+gaia-stub = { path = "gaia-stub" }
+gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
+gaia-tmtc = { path = "gaia-tmtc" }
 c2a-devtools-frontend = "1.2"

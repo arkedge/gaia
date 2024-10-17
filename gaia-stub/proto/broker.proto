@@ -11,6 +11,10 @@ service Broker {
 
   rpc OpenCommandStream(stream CommandStreamRequest) returns (stream CommandStreamResponse);
   rpc PostTelemetry(PostTelemetryRequest) returns (PostTelemetryResponse);
+
+  rpc PostSetVR(PostSetVRRequest) returns (PostSetVRResponse);
+  rpc PostADCommand(PostADCommandRequest) returns (PostADCommandResponse);
+  rpc SubscribeFopFrameEvents(SubscribeFopFrameEventsRequest) returns (stream FopFrameEvent);
 }
 
 message PostCommandRequest {
@@ -51,4 +55,34 @@ message GetLastReceivedTelemetryRequest {
 
 message GetLastReceivedTelemetryResponse {
   tco_tmiv.Tmiv tmiv = 1;
+}
+
+message PostSetVRRequest {
+  uint32 vr = 1;
+}
+
+message PostSetVRResponse {
+}
+
+message PostADCommandRequest {
+    tco_tmiv.Tco tco = 1;
+}
+
+message PostADCommandResponse {
+    bool success = 1;
+    uint64 frame_id = 2;
+}
+
+message SubscribeFopFrameEventsRequest {
+}
+
+message FopFrameEvent {
+    uint64 frame_id = 1;
+    enum EventType {
+        TRANSMIT = 0;
+        ACKNOWLEDGED = 1;
+        RETRANSMIT = 2;
+        CANCEL = 3;
+    };
+    EventType event_type = 2;
 }
