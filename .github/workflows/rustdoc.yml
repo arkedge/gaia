@@ -23,7 +23,7 @@ jobs:
           submodules: recursive
 
       # for devtools-frontend
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@v4.1.0
         with:
           node-version: 21
 
