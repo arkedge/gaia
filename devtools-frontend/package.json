@@ -32,7 +32,7 @@
     "@protobuf-ts/grpcweb-transport": "^2.8.2",
     "@protobuf-ts/runtime": "^2.9.3",
     "@protobuf-ts/runtime-rpc": "^2.9.3",
-    "monaco-editor": "^0.50.0",
+    "monaco-editor": "^0.52.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-helmet-async": "^2.0.0",
