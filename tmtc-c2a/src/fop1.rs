@@ -97,7 +97,7 @@ impl ActiveState {
     }
 
     fn timeout(&self) -> bool {
-        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
         if let Some(head) = self.sent_queue.front() {
             if head.sent_at.elapsed() > TIMEOUT {
                 return true;
@@ -150,7 +150,7 @@ impl RetransmitState {
     }
 
     fn update(&mut self) -> Option<Arc<Frame>> {
-        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
         if let Some(head) = self.retransmit_sent_queue.front() {
             if head.sent_at.elapsed() > TIMEOUT {
                 self.redo_retransmit();
