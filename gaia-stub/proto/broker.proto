@@ -13,6 +13,7 @@ service Broker {
   rpc PostTelemetry(PostTelemetryRequest) returns (PostTelemetryResponse);
 
   rpc PostSetVR(PostSetVRRequest) returns (PostSetVRResponse);
+  rpc PostUnlock(PostUnlockRequest) returns (PostUnlockResponse);
   rpc PostADCommand(PostADCommandRequest) returns (PostADCommandResponse);
   rpc SubscribeFopFrameEvents(SubscribeFopFrameEventsRequest) returns (stream FopFrameEvent);
 }
@@ -63,6 +64,10 @@ message PostSetVRRequest {
 
 message PostSetVRResponse {
 }
+
+message PostUnlockRequest { }
+
+message PostUnlockResponse { }
 
 message PostADCommandRequest {
     tco_tmiv.Tco tco = 1;
