@@ -249,7 +249,8 @@ impl Fop {
         let mut canceled_frames = VecDeque::new();
         match &mut self.state {
             FopState::Initializing { .. } => {
-                return None;
+                // forget the previous setvr command
+                // do nothing
             }
             FopState::Initial => {
                 // do nothing
