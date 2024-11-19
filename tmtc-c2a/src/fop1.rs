@@ -35,16 +35,15 @@ fn remove_acknowledged_frames(
 #[derive(Clone, Copy)]
 struct FarmState {
     next_expected_fsn: u8,
-    _lockout: bool,
+    lockout: bool,
     _wait: bool,
     retransmit: bool,
 }
 
 enum FopState {
-    Initial,
     Active(ActiveState),
     Retransmit(RetransmitState),
-    Initializing { expected_nr: u8 },
+    Initial { expected_nr: Option<u8> },
 }
 
 struct SentFrame {
@@ -177,7 +176,7 @@ impl Fop {
         let (event_sender, _) = broadcast::channel(16);
         Self {
             next_frame_id: 0,
-            state: FopState::Initial,
+            state: FopState::Initial { expected_nr: None },
             last_received_farm_state: None,
             event_sender,
         }
@@ -191,7 +190,7 @@ impl Fop {
         tracing::debug!("Received CLCW: {:?}", clcw);
         let farm_state = FarmState {
             next_expected_fsn: clcw.report_value(),
-            _lockout: clcw.lockout() != 0,
+            lockout: clcw.lockout() != 0,
             _wait: clcw.wait() != 0,
             retransmit: clcw.retransmit() != 0,
         };
@@ -204,14 +203,11 @@ impl Fop {
         };
 
         match &mut self.state {
-            FopState::Initial => {
-                // do nothing
-            }
-            FopState::Initializing { expected_nr } => {
-                if farm_state.next_expected_fsn == *expected_nr {
+            FopState::Initial { expected_nr } => {
+                if Some(farm_state.next_expected_fsn) == *expected_nr && !farm_state.lockout {
                     tracing::info!("FOP initialized");
                     self.state = FopState::Active(ActiveState {
-                        next_fsn: *expected_nr,
+                        next_fsn: farm_state.next_expected_fsn,
                         sent_queue: VecDeque::new(),
                     });
                 }
@@ -241,6 +237,38 @@ impl Fop {
                 }
             }
         }
+
+        if !farm_state.lockout {
+            return Ok(());
+        }
+
+        //lockout
+        let mut canceled_frames = VecDeque::new();
+        match &mut self.state {
+            FopState::Initial { .. } => {
+                // do nothing
+            }
+            FopState::Active(state) => {
+                canceled_frames.append(&mut state.sent_queue);
+                self.state = FopState::Initial {
+                    expected_nr: Some(state.next_fsn),
+                };
+            }
+            FopState::Retransmit(state) => {
+                canceled_frames.append(&mut state.retransmit_sent_queue);
+                canceled_frames.append(&mut state.retransmit_wait_queue);
+                self.state = FopState::Initial {
+                    expected_nr: Some(state.next_fsn),
+                };
+            }
+        }
+
+        for frame in canceled_frames {
+            self.event_sender
+                .send(FrameEvent::Cancel(frame.frame.id))
+                .ok();
+        }
+
         Ok(())
     }
 
@@ -248,11 +276,8 @@ impl Fop {
         tracing::info!("Setting VR to {}", vr);
         let mut canceled_frames = VecDeque::new();
         match &mut self.state {
-            FopState::Initializing { .. } => {
+            FopState::Initial { .. } => {
                 // forget the previous setvr command
-                // do nothing
-            }
-            FopState::Initial => {
                 // do nothing
             }
             FopState::Active(state) => {
@@ -270,7 +295,9 @@ impl Fop {
                 .ok();
         }
 
-        self.state = FopState::Initializing { expected_nr: vr };
+        self.state = FopState::Initial {
+            expected_nr: Some(vr),
+        };
         let frame = Frame {
             //TODO: manage BC retransmission and frame id for setvr command
             //id: self.next_frame_id,
@@ -279,6 +306,19 @@ impl Fop {
             // TODO: frame number of setvr command???
             sequence_number: 0,
             data_field: vec![0x82, 0x00, vr],
+        };
+        Some(frame)
+    }
+
+    pub(crate) fn unlock(&mut self) -> Option<Frame> {
+        let frame = Frame {
+            //TODO: manage BC retransmission and frame id for setvr command
+            //id: self.next_frame_id,
+            id: 0,
+            frame_type: tc::sync_and_channel_coding::FrameType::TypeBC,
+            // TODO: frame number of setvr command???
+            sequence_number: 0,
+            data_field: vec![0x00],
         };
         Some(frame)
     }
