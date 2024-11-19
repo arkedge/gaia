@@ -375,6 +375,33 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         //transmitter.
     }
 
+    async fn send_unlock(&mut self) {
+        let frame = {
+            let mut fop = self.fop.lock().await;
+            let frame = fop.unlock();
+            match frame {
+                Some(frame) => frame,
+                None => {
+                    //TODO: return error?
+                    return;
+                }
+            }
+        };
+
+        let vcid = 0;
+        let mut transmitter = self.transmitter.lock().await;
+        let _ = transmitter
+            .transmit(
+                self.tc_scid,
+                vcid,
+                frame.frame_type,
+                frame.sequence_number,
+                &frame.data_field,
+            )
+            .await;
+        //transmitter.
+    }
+
     async fn send_ad_command(&mut self, tco: Tco) -> Result<u64> {
         let Some(fat_schema) = self.registry.lookup(&tco.name) else {
             return Err(anyhow!("unknown command: {}", tco.name));

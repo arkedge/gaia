@@ -47,6 +47,8 @@ pub enum FopFrameEvent {
 pub trait FopCommandService {
     async fn send_set_vr(&mut self, value: u8);
 
+    async fn send_unlock(&mut self);
+
     async fn send_ad_command(&mut self, tco: Tco) -> Result<u64>;
 
     async fn subscribe_frame_events(
@@ -105,6 +107,15 @@ where
             .send_set_vr(value as _)
             .await;
         Ok(Response::new(PostSetVrResponse {}))
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn post_unlock(
+        &self,
+        _request: Request<PostUnlockRequest>,
+    ) -> Result<Response<PostUnlockResponse>, tonic::Status> {
+        self.fop_command_service.lock().await.send_unlock().await;
+        Ok(Response::new(PostUnlockResponse {}))
     }
 
     #[tracing::instrument(skip(self))]
