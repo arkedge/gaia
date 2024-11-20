@@ -43,6 +43,19 @@ pub enum FopFrameEvent {
     Cancel(u64),
 }
 
+#[derive(Default)]
+pub struct ClcwInfo {
+    pub lockout: bool,
+    pub wait: bool,
+    pub retransmit: bool,
+    pub next_expected_fsn: u8,
+}
+
+pub struct FopState {
+    pub last_clcw: Option<ClcwInfo>,
+    pub next_fsn: Option<u8>,
+}
+
 #[async_trait]
 pub trait FopCommandService {
     async fn send_set_vr(&mut self, value: u8);
@@ -54,6 +67,8 @@ pub trait FopCommandService {
     async fn subscribe_frame_events(
         &mut self,
     ) -> Result<Pin<Box<dyn Stream<Item = FopFrameEvent> + Send>>>;
+
+    async fn get_fop_state(&mut self) -> Result<FopState>;
 }
 
 #[tonic::async_trait]
@@ -224,5 +239,34 @@ where
             })
         });
         Ok(Response::new(stream.boxed()))
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn get_fop_state(
+        &self,
+        _request: tonic::Request<GetFopStateRequest>,
+    ) -> Result<tonic::Response<GetFopStateResponse>, tonic::Status> {
+        let state = self
+            .fop_command_service
+            .lock()
+            .await
+            .get_fop_state()
+            .await
+            .map_err(|_| Status::internal("failed to get fop state"))?;
+        let received_clcw = state.last_clcw.is_some();
+        let clcw = state.last_clcw.unwrap_or_default();
+
+        let resp = GetFopStateResponse {
+            received_clcw,
+            lockout_flag: clcw.lockout,
+            wait_flag: clcw.wait,
+            retransmit_flag: clcw.retransmit,
+            next_expected_sequence_number: clcw.next_expected_fsn as _,
+
+            has_next_sequence_number: state.next_fsn.is_some(),
+            next_sequence_number: state.next_fsn.unwrap_or_default() as _,
+        };
+
+        Ok(Response::new(resp))
     }
 }

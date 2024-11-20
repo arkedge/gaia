@@ -33,11 +33,11 @@ fn remove_acknowledged_frames(
 }
 
 #[derive(Clone, Copy)]
-struct FarmState {
-    next_expected_fsn: u8,
-    lockout: bool,
-    _wait: bool,
-    retransmit: bool,
+pub(crate) struct FarmState {
+    pub(crate) next_expected_fsn: u8,
+    pub(crate) lockout: bool,
+    pub(crate) wait: bool,
+    pub(crate) retransmit: bool,
 }
 
 enum FopState {
@@ -182,6 +182,18 @@ impl Fop {
         }
     }
 
+    pub(crate) fn last_received_farm_state(&self) -> Option<&FarmState> {
+        self.last_received_farm_state.as_ref()
+    }
+
+    pub(crate) fn next_fsn(&self) -> Option<u8> {
+        match &self.state {
+            FopState::Initial { expected_nr } => *expected_nr,
+            FopState::Active(state) => Some(state.next_fsn),
+            FopState::Retransmit(state) => Some(state.next_fsn),
+        }
+    }
+
     pub(crate) fn subscribe_frame_events(&self) -> broadcast::Receiver<FrameEvent> {
         self.event_sender.subscribe()
     }
@@ -191,7 +203,7 @@ impl Fop {
         let farm_state = FarmState {
             next_expected_fsn: clcw.report_value(),
             lockout: clcw.lockout() != 0,
-            _wait: clcw.wait() != 0,
+            wait: clcw.wait() != 0,
             retransmit: clcw.retransmit() != 0,
         };
         self.last_received_farm_state = Some(farm_state);
