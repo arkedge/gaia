@@ -458,4 +458,21 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         });
         Ok(stream.boxed())
     }
+
+    async fn get_fop_state(&mut self) -> Result<gaia_tmtc::broker::FopState> {
+        let fop = self.fop.lock().await;
+        let last_clcw = fop
+            .last_received_farm_state()
+            .map(|s| gaia_tmtc::broker::ClcwInfo {
+                lockout: s.lockout,
+                wait: s.wait,
+                retransmit: s.retransmit,
+                next_expected_fsn: s.next_expected_fsn as _,
+            });
+        let next_fsn = fop.next_fsn();
+        Ok(gaia_tmtc::broker::FopState {
+            last_clcw,
+            next_fsn,
+        })
+    }
 }
