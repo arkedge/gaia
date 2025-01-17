@@ -37,7 +37,7 @@ tlmcmddb = "2.5.1"
 structpack.workspace = true
 gaia-ccsds-c2a.workspace = true
 gaia-tmtc.workspace = true
-c2a-devtools-frontend.workspace = true
+c2a-devtools-frontend = { workspace = true, optional = true }
 kble-socket = { version = "0.3.0", features = ["tungstenite"] }
 tokio-tungstenite = "0.20.1"
 itertools = "0.12.1"
@@ -46,4 +46,9 @@ notalawyer-clap = "0.1.0"
 
 [build-dependencies]
 tonic-build = "0.11"
-notalawyer-build = "0.1.0"
+notalawyer-build = { version = "0.1.0", optional = true }
+
+[features]
+default = ["bin", "devtools"]
+bin = ["dep:notalawyer-build"]
+devtools = ["dep:c2a-devtools-frontend"]

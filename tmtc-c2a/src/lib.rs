@@ -7,4 +7,5 @@ pub mod satellite;
 mod tco;
 mod tmiv;
 
+#[cfg(feature = "devtools")]
 pub mod devtools_server;

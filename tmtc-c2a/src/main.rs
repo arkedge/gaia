@@ -27,7 +27,9 @@ use tower_http::trace::TraceLayer;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use tmtc_c2a::{devtools_server, kble_gs, proto, registry, satellite, Satconfig};
+#[cfg(feature = "devtools")]
+use tmtc_c2a::devtools_server;
+use tmtc_c2a::{kble_gs, proto, registry, satellite, Satconfig};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -180,11 +182,13 @@ async fn main() -> Result<()> {
             .add_service(reflection_service)
             .into_service();
 
-        let app = axum::Router::new()
-            .nest(
-                "/devtools/",
-                axum::Router::new().fallback(devtools_server::serve),
-            )
+        let app = axum::Router::new();
+        #[cfg(feature = "devtools")]
+        let app = app.nest(
+            "/devtools/",
+            axum::Router::new().fallback(devtools_server::serve),
+        );
+        let app = app
             .route("/", get(|| async { Redirect::to("/devtools/") }))
             .route("/devtools", get(|| async { Redirect::to("/devtools/") }))
             .fallback_service(HandleError::new(rpc_service, handle_rpc_error));
