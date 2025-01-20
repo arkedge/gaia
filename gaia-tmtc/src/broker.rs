@@ -58,17 +58,17 @@ pub struct FopState {
 
 #[async_trait]
 pub trait FopCommandService {
-    async fn send_set_vr(&mut self, value: u8);
+    async fn send_set_vr(&self, value: u8);
 
-    async fn send_unlock(&mut self);
+    async fn send_unlock(&self);
 
-    async fn send_ad_command(&mut self, tco: Tco) -> Result<u64>;
+    async fn send_ad_command(&self, tco: Tco) -> Result<u64>;
 
     async fn subscribe_frame_events(
-        &mut self,
-    ) -> Result<Pin<Box<dyn Stream<Item = FopFrameEvent> + Send>>>;
+        &self,
+    ) -> Result<Pin<Box<dyn Stream<Item = FopFrameEvent> + Send + Sync>>>;
 
-    async fn get_fop_state(&mut self) -> Result<FopState>;
+    async fn get_fop_state(&self) -> Result<FopState>;
 }
 
 #[tonic::async_trait]
