@@ -348,7 +348,7 @@ impl<T: tc::SyncAndChannelCoding + Send + 'static> FopCommandService<T> {
 impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
     for FopCommandService<T>
 {
-    async fn send_set_vr(&mut self, vr: u8) {
+    async fn send_set_vr(&self, vr: u8) {
         let frame = {
             let mut fop = self.fop.lock().await;
             let frame = fop.set_vr(vr);
@@ -375,7 +375,7 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         //transmitter.
     }
 
-    async fn send_unlock(&mut self) {
+    async fn send_unlock(&self) {
         let frame = {
             let mut fop = self.fop.lock().await;
             let frame = fop.unlock();
@@ -402,7 +402,7 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         //transmitter.
     }
 
-    async fn send_ad_command(&mut self, tco: Tco) -> Result<u64> {
+    async fn send_ad_command(&self, tco: Tco) -> Result<u64> {
         let Some(fat_schema) = self.registry.lookup(&tco.name) else {
             return Err(anyhow!("unknown command: {}", tco.name));
         };
@@ -440,11 +440,12 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
     }
 
     async fn subscribe_frame_events(
-        &mut self,
-    ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send>>> {
-        use futures::StreamExt;
+        &self,
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
+    {
+        use tokio_stream::StreamExt;
         let rx = self.fop.lock().await.subscribe_frame_events();
-        let stream = tokio_stream::wrappers::BroadcastStream::new(rx).filter_map(|e| async {
+        let stream = tokio_stream::wrappers::BroadcastStream::new(rx).filter_map(|e| {
             use crate::fop1::FrameEvent;
             use gaia_tmtc::broker::FopFrameEvent;
             let e = e.ok()?;
@@ -456,10 +457,10 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
             };
             Some(e)
         });
-        Ok(stream.boxed())
+        Ok(Box::pin(stream))
     }
 
-    async fn get_fop_state(&mut self) -> Result<gaia_tmtc::broker::FopState> {
+    async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
         let fop = self.fop.lock().await;
         let last_clcw = fop
             .last_received_farm_state()
