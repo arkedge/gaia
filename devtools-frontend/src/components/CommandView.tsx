@@ -136,6 +136,12 @@ const buildTco = (
     const parameterSchema = commandSchema.parameters[i];
     const parameter = commandLine.parameters[i];
     const name = `param${i + 1}`;
+    const typeConversionWarning = (from, to) => {
+      window.alert(
+        `Automatically converting ${from} to ${to} at ${name}. \n` +
+          "Automatic conversion will be removed in future!!",
+      );
+    };
     switch (parameterSchema.dataType) {
       case CommandParameterDataType.CMD_PARAMETER_BYTES:
         switch (parameter.type) {
@@ -164,6 +170,7 @@ const buildTco = (
             });
             break;
           case "bytes":
+            typeConversionWarning("bytes", "double");
             tcoParams.push({
               name,
               value: {
@@ -188,6 +195,7 @@ const buildTco = (
             });
             break;
           case "integer":
+            typeConversionWarning("integer", "double");
             tcoParams.push({
               name,
               value: {
@@ -197,6 +205,7 @@ const buildTco = (
             });
             break;
           case "bytes":
+            typeConversionWarning("bytes", "double");
             tcoParams.push({
               name,
               value: {
