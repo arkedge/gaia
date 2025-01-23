@@ -31,6 +31,7 @@ const buildTco = (
   commandPrefixes: { [key: string]: CommandPrefixSchema },
   commandComponents: { [key: string]: CommandComponentSchema },
   commandLine: CommandLine,
+  warnings: string[],
 ): Tco => {
   let componentName = commandLine.command.receiverComponent;
   let commandPrefixName = commandLine.command.prefix;
@@ -136,6 +137,14 @@ const buildTco = (
     const parameterSchema = commandSchema.parameters[i];
     const parameter = commandLine.parameters[i];
     const name = `param${i + 1}`;
+    const typeConversionWarning = (from: string, to: string) => {
+      warnings.push(
+        [
+          `Automatically converting ${from} to ${to} at ${name}.`,
+          `Automatic conversion will be removed in future!!`,
+        ].join("\n"),
+      );
+    };
     switch (parameterSchema.dataType) {
       case CommandParameterDataType.CMD_PARAMETER_BYTES:
         switch (parameter.type) {
@@ -164,6 +173,7 @@ const buildTco = (
             });
             break;
           case "bytes":
+            typeConversionWarning("bytes", "double");
             tcoParams.push({
               name,
               value: {
@@ -188,6 +198,7 @@ const buildTco = (
             });
             break;
           case "integer":
+            typeConversionWarning("integer", "double");
             tcoParams.push({
               name,
               value: {
@@ -197,6 +208,7 @@ const buildTco = (
             });
             break;
           case "bytes":
+            typeConversionWarning("bytes", "double");
             tcoParams.push({
               name,
               value: {
@@ -226,6 +238,7 @@ class Driver implements opslang.Driver {
   tlmVariables: Map<string, opslang.Value> = new Map();
   params: Map<string, opslang.Value> = new Map();
   datetimeOrigin: Map<string, bigint> = new Map();
+  warnings: string[] = [];
 
   constructor(
     commandPrefixes: { [key: string]: CommandPrefixSchema },
@@ -291,10 +304,12 @@ class Driver implements opslang.Driver {
       }),
     };
 
+    this.warnings = [];
     const tco = buildTco(
       this.commandPrefixes,
       this.commandComponents,
       commandLine,
+      this.warnings,
     );
     await this.client.postCommand({
       tco,
@@ -580,6 +595,20 @@ export const CommandView: React.FC = () => {
             },
           ]);
           return [false, undefined];
+        }
+
+        if (driver.warnings.length > 0) {
+          decoration.clear();
+          monacoInstance.editor.setModelMarkers(model, "owner", [
+            {
+              message: driver.warnings.join("\n"),
+              severity: monaco.MarkerSeverity.Warning,
+              startLineNumber: lineno,
+              startColumn: 1,
+              endLineNumber: lineno,
+              endColumn: model.getLineLength(lineno) + 1,
+            },
+          ]);
         }
 
         const delayLength = Math.max(result.requestedDelay, 0);
