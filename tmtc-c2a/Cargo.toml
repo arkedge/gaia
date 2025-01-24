@@ -43,6 +43,7 @@ tokio-tungstenite = "0.20.1"
 itertools = "0.12.1"
 notalawyer = "0.1.0"
 notalawyer-clap = "0.1.0"
+tokio-stream = { version = "0.1.16", features = ["sync"] }
 
 [build-dependencies]
 tonic-build = "0.11"
