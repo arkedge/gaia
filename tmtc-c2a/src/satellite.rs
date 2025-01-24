@@ -223,6 +223,14 @@ where
                 continue;
             };
 
+            let incoming_scid = tf.primary_header.scid();
+            if incoming_scid != self.aos_scid {
+                warn!("unknown SCID: {incoming_scid}");
+                continue;
+            }
+            let vcid = tf.primary_header.vcid();
+
+            //TODO: filter by vcid??
             {
                 let clcw = tf.trailer.into_ref().clone();
                 let mut fop = self.fop.lock().await;
@@ -231,12 +239,6 @@ where
                 }
             }
 
-            let incoming_scid = tf.primary_header.scid();
-            if incoming_scid != self.aos_scid {
-                warn!("unknown SCID: {incoming_scid}");
-                continue;
-            }
-            let vcid = tf.primary_header.vcid();
             let channel = demuxer.demux(vcid);
             let frame_count = tf.primary_header.frame_count();
             if let Err(expected) = channel.synchronizer.next(frame_count) {
@@ -253,6 +255,7 @@ where
                 channel.defragmenter.reset();
                 continue;
             }
+
             while let Some((space_packet_bytes, space_packet)) =
                 channel.defragmenter.read_as_bytes_and_packet()
             {
