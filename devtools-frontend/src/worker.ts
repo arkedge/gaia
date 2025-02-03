@@ -158,7 +158,9 @@ class TelemetryRecorder {
           const recordFile = await blobDirectory.getFileHandle(blobFileName, {
             create: true,
           });
-          const blobWritable = await recordFile.createWritable();
+          const blobWritable = await recordFile.createWritable({
+            keepExistingData: true,
+          });
           const size = (await recordFile.getFile()).size;
           await blobWritable.seek(size);
           await blobWritable.write(blobBytes);
