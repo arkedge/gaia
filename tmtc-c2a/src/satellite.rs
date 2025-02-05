@@ -347,11 +347,18 @@ impl<T: tc::SyncAndChannelCoding + Send + 'static> FopCommandService<T> {
     }
 }
 
-#[async_trait]
-impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
-    for FopCommandService<T>
-{
-    async fn send_set_vr(&self, vr: u8) {
+#[derive(thiserror::Error, Debug)]
+pub enum SendAdCommandError {
+    #[error("FOP is not ready")]
+    FopNotReady,
+    #[error("unknown command: {0}")]
+    UnknownCommand(String),
+    #[error("other error: {0}")]
+    Internal(anyhow::Error),
+}
+
+impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
+    pub async fn send_set_vr(&self, vr: u8) {
         let frame = {
             let mut fop = self.fop.lock().await;
             let frame = fop.set_vr(vr);
@@ -375,10 +382,9 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
                 &frame.data_field,
             )
             .await;
-        //transmitter.
     }
 
-    async fn send_unlock(&self) {
+    pub async fn send_unlock(&self) {
         let frame = {
             let mut fop = self.fop.lock().await;
             let frame = fop.unlock();
@@ -405,9 +411,9 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         //transmitter.
     }
 
-    async fn send_ad_command(&self, tco: Tco) -> Result<u64> {
+    pub async fn send_ad_command(&self, tco: Tco) -> Result<u64, SendAdCommandError> {
         let Some(fat_schema) = self.registry.lookup(&tco.name) else {
-            return Err(anyhow!("unknown command: {}", tco.name));
+            return Err(SendAdCommandError::UnknownCommand(tco.name.clone()));
         };
         let ctx = CommandContext {
             tc_scid: 0, // dummy
@@ -415,14 +421,15 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
             tco: &tco,
         };
         let mut buf = vec![0u8; 1017]; // FIXME: hard-coded max size
-        let len = ctx.build_tc_segment(&mut buf)?;
+        let len = ctx
+            .build_tc_segment(&mut buf)
+            .map_err(SendAdCommandError::Internal)?;
         buf.truncate(len);
 
         let mut fop = self.fop.lock().await;
         let frame = match fop.send_ad(buf) {
             None => {
-                tracing::warn!("FOP is not ready");
-                return Err(anyhow!("FOP is not ready"));
+                return Err(SendAdCommandError::FopNotReady);
             }
             Some(frame) => frame,
         };
@@ -442,7 +449,7 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         Ok(frame.id)
     }
 
-    async fn subscribe_frame_events(
+    pub async fn subscribe_frame_events(
         &self,
     ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
     {
@@ -463,7 +470,7 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         Ok(Box::pin(stream))
     }
 
-    async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
+    pub async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
         let fop = self.fop.lock().await;
         let last_clcw = fop
             .last_received_farm_state()
@@ -478,5 +485,33 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
             last_clcw,
             next_fsn,
         })
+    }
+}
+
+#[async_trait]
+impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
+    for FopCommandService<T>
+{
+    async fn send_set_vr(&self, vr: u8) {
+        self.send_set_vr(vr).await
+    }
+
+    async fn send_unlock(&self) {
+        self.send_unlock().await
+    }
+
+    async fn send_ad_command(&self, tco: Tco) -> Result<u64> {
+        self.send_ad_command(tco).await.map_err(Into::into)
+    }
+
+    async fn subscribe_frame_events(
+        &self,
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
+    {
+        self.subscribe_frame_events().await
+    }
+
+    async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
+        self.get_fop_state().await
     }
 }

@@ -44,6 +44,7 @@ itertools = "0.12.1"
 notalawyer = "0.1.0"
 notalawyer-clap = "0.1.0"
 tokio-stream = { version = "0.1.16", features = ["sync"] }
+thiserror = "2.0.11"
 
 [build-dependencies]
 tonic-build = "0.11"
