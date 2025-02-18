@@ -145,7 +145,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub fn new<T, R>(
-    aos_scid: u8,
+    aos_scid: u16,
     tc_scid: u16,
     tlm_registry: TelemetryRegistry,
     cmd_registry: impl Into<Arc<CommandRegistry>>,
@@ -184,7 +184,7 @@ where
 
 pub struct TelemetryReporter<R> {
     #[allow(unused)]
-    aos_scid: u8,
+    aos_scid: u16,
     tmiv_builder: TmivBuilder,
     receiver: R,
 }

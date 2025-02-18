@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Satconfig {
-    pub aos_scid: u8,
+    pub aos_scid: u16,
     pub tc_scid: u16,
     pub tlm_apid_map: HashMap<u16, String>,
     pub cmd_apid_map: HashMap<String, u16>,
