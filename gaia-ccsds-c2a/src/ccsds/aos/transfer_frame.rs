@@ -10,12 +10,15 @@ use zerocopy::{AsBytes, ByteSlice, FromBytes, LayoutVerified, Unaligned};
 #[repr(C)]
 pub struct PrimaryHeader {
     pub version_number: B2,
-    pub scid: B8,
+    pub scid_low: B8,
     pub vcid: B6,
     pub frame_count_raw: B24,
     pub replay_flag: bool,
     #[skip]
-    __: B7,
+    __: B1,
+    scid_high: B2,
+    #[skip]
+    __: B4,
 }
 
 impl PrimaryHeader {
@@ -29,6 +32,16 @@ impl PrimaryHeader {
 
     pub fn set_frame_count(&mut self, FrameCount(raw): FrameCount) {
         self.set_frame_count_raw(raw);
+    }
+
+    pub fn scid(&self) -> u16 {
+        self.scid_low() as u16 | (self.scid_high() as u16) << 8
+    }
+
+    pub fn set_scid(&mut self, scid: u16) {
+        assert!(scid < 1024);
+        self.set_scid_low(scid as u8);
+        self.set_scid_high((scid >> 8) as u8);
     }
 }
 
