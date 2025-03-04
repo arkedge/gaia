@@ -3,8 +3,8 @@ name = "tmtc-c2a"
 version.workspace = true
 description.workspace = true
 repository.workspace = true
+license.workspace = true
 edition = "2021"
-license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,25 +25,30 @@ tower-http = { version = "0.4", features = ["trace", "cors"] }
 tokio = { version = "1", features = ["full"] }
 prost = "0.12"
 prost-types = "0.12"
-tonic = { version = "0.10", features = ["tls", "tls-roots-common", "tls-webpki-roots"] }
-tonic-health = "0.10"
-tonic-reflection = "0.10"
-tonic-web = "0.10"
+tonic = { version = "0.11", features = ["tls", "tls-roots-common", "tls-webpki-roots"] }
+tonic-health = "0.11"
+tonic-reflection = "0.11"
+tonic-web = "0.11"
 axum = { version = "0.6", default-features = false, features = ["http1", "tokio"] }
 mime_guess = "2.0.4"
-sentry = { version = "0.32", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
-sentry-tracing = "0.32"
-tlmcmddb = "0.2.0"
+sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "reqwest"] }
+sentry-tracing = "0.34"
+tlmcmddb = "2.5.1"
 structpack.workspace = true
 gaia-ccsds-c2a.workspace = true
 gaia-tmtc.workspace = true
-c2a-devtools-frontend.workspace = true
+c2a-devtools-frontend = { workspace = true, optional = true }
 kble-socket = { version = "0.3.0", features = ["tungstenite"] }
 tokio-tungstenite = "0.20.1"
-itertools = "0.11.0"
+itertools = "0.12.1"
 notalawyer = "0.1.0"
 notalawyer-clap = "0.1.0"
 
 [build-dependencies]
-tonic-build = "0.10"
-notalawyer-build = "0.1.0"
+tonic-build = "0.11"
+notalawyer-build = { version = "0.1.0", optional = true }
+
+[features]
+default = ["bin", "devtools"]
+bin = ["dep:notalawyer-build"]
+devtools = ["dep:c2a-devtools-frontend"]

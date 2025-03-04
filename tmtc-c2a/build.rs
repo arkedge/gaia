@@ -8,5 +8,6 @@ fn main() {
         .compile(&["./proto/tmtc_generic_c2a.proto"], &["./proto"])
         .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
 
+    #[cfg(feature = "bin")]
     notalawyer_build::build();
 }

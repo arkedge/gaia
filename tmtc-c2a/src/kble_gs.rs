@@ -1,5 +1,5 @@
 use anyhow::{anyhow, ensure, Result};
-use futures::{future, SinkExt, TryStreamExt};
+use futures::{SinkExt, TryStreamExt};
 use gaia_ccsds_c2a::{
     ccsds::{
         aos,
@@ -65,10 +65,14 @@ impl Socket {
                 }
                 anyhow::Ok(())
             };
-            let res: Result<((), ())> = future::try_join(uplink, downlink).await;
+            let res = tokio::select! {
+                res = uplink => res,
+                res = downlink => res,
+            };
             if let Err(e) = res {
                 error!("kble socket error: {e}")
             }
+            sink.close().await?;
         }
     }
 }

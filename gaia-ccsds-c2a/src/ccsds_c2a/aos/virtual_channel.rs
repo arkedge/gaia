@@ -15,6 +15,6 @@ pub struct Demuxer {
 
 impl Demuxer {
     pub fn demux(&mut self, vcid: u8) -> &mut VirtualChannel {
-        self.channels.entry(vcid).or_insert_with(Default::default)
+        self.channels.entry(vcid).or_default()
     }
 }

@@ -17,8 +17,8 @@
       "packageNames": ["sentry", "sentry-tracing"]
     },
     {
-      "groupName": "tonic",
-      "groupSlug": "tonic",
+      "groupName": "http-grpc",
+      "groupSlug": "http-grpc",
       "packageNames": [
         "tonic",
         "tonic-build",
@@ -27,7 +27,47 @@
         "tonic-web",
         "prost",
         "prost-types",
-        "prost-derive"
+        "prost-derive",
+        "http",
+        "axum",
+        "tokio-tungstenite",
+        "kble-socket",
+        "tower",
+        "tower-http",
+        "http"
+      ]
+    },
+    {
+      "groupName": "axum",
+      "groupSlug": "axum",
+      "matchPackageNames": ["axum"],
+      "allowedVersions": ["0.6.20"]
+    },
+    {
+      "groupName": "tungstenite",
+      "groupSlug": "tungstenite",
+      "matchPackageNames": ["tokio-tungstenite"],
+      "allowedVersions": ["0.20.1"]
+    },
+    {
+      "groupName": "http",
+      "groupSlug": "http",
+      "matchPackageNames": ["http"],
+      "allowedVersions": ["0.2.11"]
+    },
+    {
+      "groupName": "tower-http",
+      "groupSlug": "tower-http",
+      "matchPackageNames": ["tower-http"],
+      "allowedVersions": ["0.4.4"]
+    },
+    {
+      "groupName": "protobuf-ts",
+      "groupSlug": "protobuf-ts",
+      "packageNames": [
+        "@protobuf-ts/runtime-rpc",
+        "@protobuf-ts/runtime",
+        "@protobuf-ts/grpcweb-transport"
       ]
     }
   ]

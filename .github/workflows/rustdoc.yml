@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: checkout all the submodules
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
 
       # for devtools-frontend
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@v4.1.0
         with:
           node-version: 21
 
@@ -43,10 +43,10 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.toolchain }}
 
       - name: cache dependencies
-        uses: Swatinem/rust-cache@v2.7.3
+        uses: Swatinem/rust-cache@v2.7.5
 
       - name: Install cargo-about
-        run: cargo install cargo-about --locked
+        run: cargo install cargo-about@0.6.4 --locked
 
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
@@ -90,4 +90,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4.0.4
+        uses: actions/deploy-pages@v4.0.5

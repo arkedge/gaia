@@ -11,7 +11,7 @@ use gaia_ccsds_c2a::{
     ccsds::{self, aos, tc},
     ccsds_c2a::{
         self,
-        aos::{virual_channel::Demuxer, SpacePacket},
+        aos::{virtual_channel::Demuxer, SpacePacket},
         tc::{segment, space_packet},
     },
 };
@@ -42,7 +42,7 @@ impl TmivBuilder {
         let apid = space_packet.primary_header.apid();
         let tlm_id = space_packet.secondary_header.telemetry_id();
         let Some(telemetry) = self.tlm_registry.lookup(apid, tlm_id) else {
-            return Err(anyhow!("unknown tlm_id: {tlm_id}"));
+            return Err(anyhow!("unknown tlm_id: {tlm_id} from apid: {apid}"));
         };
         let channels = self
             .tlm_registry
@@ -145,7 +145,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub fn new<T, R>(
-    aos_scid: u8,
+    aos_scid: u16,
     tc_scid: u16,
     tlm_registry: TelemetryRegistry,
     cmd_registry: impl Into<Arc<CommandRegistry>>,
@@ -184,7 +184,7 @@ where
 
 pub struct TelemetryReporter<R> {
     #[allow(unused)]
-    aos_scid: u8,
+    aos_scid: u16,
     tmiv_builder: TmivBuilder,
     receiver: R,
 }

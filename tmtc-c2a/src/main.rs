@@ -17,7 +17,8 @@ use gaia_tmtc::{
 };
 use notalawyer_clap::*;
 use tmtc_c2a::proto::tmtc_generic_c2a::tmtc_generic_c2a_server::TmtcGenericC2aServer;
-use tonic::transport::{Channel, NamedService, Server, Uri};
+use tonic::server::NamedService;
+use tonic::transport::{Channel, Server, Uri};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower::ServiceBuilder;
@@ -26,7 +27,9 @@ use tower_http::trace::TraceLayer;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use tmtc_c2a::{devtools_server, kble_gs, proto, registry, satellite, Satconfig};
+#[cfg(feature = "devtools")]
+use tmtc_c2a::devtools_server;
+use tmtc_c2a::{kble_gs, proto, registry, satellite, Satconfig};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -179,11 +182,13 @@ async fn main() -> Result<()> {
             .add_service(reflection_service)
             .into_service();
 
-        let app = axum::Router::new()
-            .nest(
-                "/devtools/",
-                axum::Router::new().fallback(devtools_server::serve),
-            )
+        let app = axum::Router::new();
+        #[cfg(feature = "devtools")]
+        let app = app.nest(
+            "/devtools/",
+            axum::Router::new().fallback(devtools_server::serve),
+        );
+        let app = app
             .route("/", get(|| async { Redirect::to("/devtools/") }))
             .route("/devtools", get(|| async { Redirect::to("/devtools/") }))
             .fallback_service(HandleError::new(rpc_service, handle_rpc_error));
