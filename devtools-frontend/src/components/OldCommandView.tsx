@@ -115,9 +115,14 @@ const buildTco = (
     commandLine.parameters.length !==
     commandSchema.parameters.length + extraParams
   ) {
-    throw new Error(
-      `the number of parameters is wrong: expected ${commandSchema.parameters.length}, but got ${commandLine.parameters.length}`,
-    );
+    let explain = "";
+    if (extraParams == 0) {
+      explain = `expected ${commandSchema.parameters.length} parameters, but got ${commandLine.parameters.length}`;
+    } else {
+      explain = `${commandSchema.parameters.length} normal parameters and ${extraParams} ti parameters, but got ${commandLine.parameters.length} in total`;
+    }
+
+    throw new Error(`the number of parameters is wrong: ${explain}`);
   }
   const tcoParams: TcoParam[] = [];
   if (commandSubsystem.hasTimeIndicator) {
