@@ -16,7 +16,7 @@ service Broker {
   rpc PostUnlock(PostUnlockRequest) returns (PostUnlockResponse);
   rpc PostADCommand(PostADCommandRequest) returns (PostADCommandResponse);
   rpc SubscribeFopFrameEvents(SubscribeFopFrameEventsRequest) returns (stream FopFrameEvent);
-  rpc GetFopState(GetFopStateRequest) returns (GetFopStateResponse);
+  rpc GetFopStatus(GetFopStatusRequest) returns (GetFopStatusResponse);
 }
 
 message PostCommandRequest {
@@ -93,9 +93,9 @@ message FopFrameEvent {
     EventType event_type = 2;
 }
 
-message GetFopStateRequest {}
+message GetFopStatusRequest {}
 
-message GetFopStateResponse {
+message GetFopStatusResponse {
   bool received_clcw = 1;
   bool lockout_flag = 2;
   bool wait_flag = 3;
