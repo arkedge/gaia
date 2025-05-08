@@ -470,7 +470,7 @@ impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
         Ok(Box::pin(stream))
     }
 
-    pub async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
+    pub async fn get_fop_status(&self) -> Result<gaia_tmtc::broker::FopStatus> {
         let fop = self.fop.lock().await;
         let last_clcw = fop
             .last_received_farm_state()
@@ -481,7 +481,7 @@ impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
                 next_expected_fsn: s.next_expected_fsn as _,
             });
         let next_fsn = fop.next_fsn();
-        Ok(gaia_tmtc::broker::FopState {
+        Ok(gaia_tmtc::broker::FopStatus {
             last_clcw,
             next_fsn,
         })
@@ -511,7 +511,7 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
         self.subscribe_frame_events().await
     }
 
-    async fn get_fop_state(&self) -> Result<gaia_tmtc::broker::FopState> {
-        self.get_fop_state().await
+    async fn get_fop_status(&self) -> Result<gaia_tmtc::broker::FopStatus> {
+        self.get_fop_status().await
     }
 }
