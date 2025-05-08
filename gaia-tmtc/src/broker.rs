@@ -51,8 +51,15 @@ pub struct ClcwInfo {
     pub next_expected_fsn: u8,
 }
 
+pub enum StateSummary {
+    Initial,
+    Active,
+    Retransmit { retransmit_count: u64 },
+}
+
 pub struct FopStatus {
     pub last_clcw: Option<ClcwInfo>,
+    pub state_summary: StateSummary,
     pub next_fsn: Option<u8>,
 }
 
@@ -256,15 +263,30 @@ where
         let received_clcw = state.last_clcw.is_some();
         let clcw = state.last_clcw.unwrap_or_default();
 
+        use gaia_stub::broker::{
+            fop_state::{RetransmitState, State},
+            FopState,
+        };
+        let fop_state = match state.state_summary {
+            StateSummary::Initial => State::Initial(()),
+            StateSummary::Active => State::Active(()),
+            StateSummary::Retransmit { retransmit_count } => {
+                State::Retransmit(RetransmitState { retransmit_count })
+            }
+        };
+        let fop_state = FopState {
+            state: Some(fop_state),
+        };
+
         let resp = GetFopStatusResponse {
             received_clcw,
             lockout_flag: clcw.lockout,
             wait_flag: clcw.wait,
             retransmit_flag: clcw.retransmit,
             next_expected_sequence_number: clcw.next_expected_fsn as _,
-
             has_next_sequence_number: state.next_fsn.is_some(),
             next_sequence_number: state.next_fsn.unwrap_or_default() as _,
+            fop_state: Some(fop_state),
         };
 
         Ok(Response::new(resp))

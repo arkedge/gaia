@@ -46,6 +46,12 @@ enum FopState {
     Initial { expected_nr: Option<u8> },
 }
 
+pub enum FopStateSummary {
+    Active,
+    Retransmit { retransmit_count: u64 },
+    Initial,
+}
+
 struct SentFrame {
     frame: Arc<Frame>,
     sent_at: std::time::Instant,
@@ -191,6 +197,16 @@ impl Fop {
             FopState::Initial { expected_nr } => *expected_nr,
             FopState::Active(state) => Some(state.next_fsn),
             FopState::Retransmit(state) => Some(state.next_fsn),
+        }
+    }
+
+    pub(crate) fn state_summary(&self) -> FopStateSummary {
+        match &self.state {
+            FopState::Active(_) => FopStateSummary::Active,
+            FopState::Retransmit(s) => FopStateSummary::Retransmit {
+                retransmit_count: s.retransmit_count as u64,
+            },
+            FopState::Initial { .. } => FopStateSummary::Initial,
         }
     }
 
