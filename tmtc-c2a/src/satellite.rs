@@ -480,9 +480,19 @@ impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
                 retransmit: s.retransmit,
                 next_expected_fsn: s.next_expected_fsn as _,
             });
+        use crate::fop1::FopStateSummary;
+        use gaia_tmtc::broker::StateSummary;
+        let state_summary = match fop.state_summary() {
+            FopStateSummary::Initial => StateSummary::Initial,
+            FopStateSummary::Active => StateSummary::Active,
+            FopStateSummary::Retransmit { retransmit_count } => {
+                StateSummary::Retransmit { retransmit_count }
+            }
+        };
         let next_fsn = fop.next_fsn();
         Ok(gaia_tmtc::broker::FopStatus {
             last_clcw,
+            state_summary,
             next_fsn,
         })
     }

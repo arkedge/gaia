@@ -3,6 +3,7 @@ syntax = "proto3";
 package broker;
 
 import "tco_tmiv.proto";
+import "google/protobuf/empty.proto";
 
 service Broker {
   rpc PostCommand(PostCommandRequest) returns (PostCommandResponse);
@@ -95,6 +96,18 @@ message FopFrameEvent {
 
 message GetFopStatusRequest {}
 
+
+message FopState {
+  message RetransmitState {
+    uint64 retransmit_count = 1;
+  }
+  oneof state {
+    google.protobuf.Empty initial = 1;
+    google.protobuf.Empty active = 2;
+    RetransmitState retransmit = 3;
+  }
+}
+
 message GetFopStatusResponse {
   bool received_clcw = 1;
   bool lockout_flag = 2;
@@ -102,6 +115,7 @@ message GetFopStatusResponse {
   bool retransmit_flag = 4;
   uint32 next_expected_sequence_number = 5;
 
+  FopState fop_state = 10;
   bool has_next_sequence_number = 11;
   uint32 next_sequence_number = 12;
 }
