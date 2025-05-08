@@ -16,6 +16,7 @@ service Broker {
   rpc PostSetVR(PostSetVRRequest) returns (PostSetVRResponse);
   rpc PostUnlock(PostUnlockRequest) returns (PostUnlockResponse);
   rpc PostADCommand(PostADCommandRequest) returns (PostADCommandResponse);
+  rpc ClearAD(ClearADRequest) returns (ClearADResponse);
   rpc SubscribeFopFrameEvents(SubscribeFopFrameEventsRequest) returns (stream FopFrameEvent);
   rpc GetFopStatus(GetFopStatusRequest) returns (GetFopStatusResponse);
 }
@@ -80,6 +81,7 @@ message PostADCommandResponse {
     uint64 frame_id = 2;
 }
 
+
 message SubscribeFopFrameEventsRequest {
 }
 
@@ -93,6 +95,10 @@ message FopFrameEvent {
     };
     EventType event_type = 2;
 }
+
+message ClearADRequest { }
+
+message ClearADResponse { }
 
 message GetFopStatusRequest {}
 

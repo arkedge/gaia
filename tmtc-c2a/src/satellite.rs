@@ -449,6 +449,10 @@ impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
         Ok(frame.id)
     }
 
+    pub async fn clear(&self) {
+        self.fop.lock().await.clear();
+    }
+
     pub async fn subscribe_frame_events(
         &self,
     ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
@@ -512,6 +516,10 @@ impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
 
     async fn send_ad_command(&self, tco: Tco) -> Result<u64> {
         self.send_ad_command(tco).await.map_err(Into::into)
+    }
+
+    async fn clear(&self) {
+        self.clear().await
     }
 
     async fn subscribe_frame_events(

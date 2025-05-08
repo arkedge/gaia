@@ -67,6 +67,8 @@ pub struct FopStatus {
 pub trait FopCommandService {
     async fn send_set_vr(&self, value: u8);
 
+    async fn clear(&self);
+
     async fn send_unlock(&self);
 
     async fn send_ad_command(&self, tco: Tco) -> Result<u64>;
@@ -167,6 +169,15 @@ where
             success: true,
             frame_id: id,
         }))
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn clear_ad(
+        &self,
+        _request: tonic::Request<ClearAdRequest>,
+    ) -> Result<tonic::Response<ClearAdResponse>, tonic::Status> {
+        self.fop_command_service.lock().await.clear().await;
+        Ok(Response::new(ClearAdResponse {}))
     }
 
     #[tracing::instrument(skip(self))]

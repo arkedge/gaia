@@ -300,8 +300,7 @@ impl Fop {
         Ok(())
     }
 
-    pub(crate) fn set_vr(&mut self, vr: u8) -> Option<Frame> {
-        tracing::info!("Setting VR to {}", vr);
+    pub(crate) fn clear(&mut self) {
         let mut canceled_frames = VecDeque::new();
         match &mut self.state {
             FopState::Initial { .. } => {
@@ -322,6 +321,13 @@ impl Fop {
                 .send(FrameEvent::Cancel(frame.frame.id))
                 .ok();
         }
+
+        self.state = FopState::Initial { expected_nr: None };
+    }
+
+    pub(crate) fn set_vr(&mut self, vr: u8) -> Option<Frame> {
+        tracing::info!("Setting VR to {}", vr);
+        self.clear();
 
         self.state = FopState::Initial {
             expected_nr: Some(vr),
