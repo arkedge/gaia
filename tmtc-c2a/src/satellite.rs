@@ -1,4 +1,5 @@
-use std::{sync::Arc, time};
+use std::{pin::Pin, sync::Arc, time};
+use tokio::sync::Mutex;
 
 use crate::{
     registry::{CommandRegistry, FatCommandSchema, TelemetryRegistry},
@@ -120,7 +121,7 @@ impl<'a> CommandContext<'a> {
 
 #[derive(Clone)]
 pub struct Service<T> {
-    sync_and_channel_coding: T,
+    sync_and_channel_coding: Arc<Mutex<T>>,
     registry: Arc<CommandRegistry>,
     tc_scid: u16,
 }
@@ -138,7 +139,8 @@ where
             fat_schema,
             tco,
         };
-        ctx.transmit_to(&mut self.sync_and_channel_coding).await?;
+        ctx.transmit_to(&mut *self.sync_and_channel_coding.lock().await)
+            .await?;
         Ok(true)
     }
 }
@@ -151,21 +153,29 @@ pub fn new<T, R>(
     cmd_registry: impl Into<Arc<CommandRegistry>>,
     receiver: R,
     transmitter: T,
-) -> (Service<T>, TelemetryReporter<R>)
+) -> (Service<T>, FopCommandService<T>, TelemetryReporter<R>)
 where
-    T: tc::SyncAndChannelCoding,
+    T: tc::SyncAndChannelCoding + Send + 'static,
     R: aos::SyncAndChannelCoding,
 {
+    let registry = cmd_registry.into();
+    let transmitter = Arc::new(Mutex::new(transmitter));
+    let fop = crate::fop1::Fop::new();
+    let fop = Arc::new(Mutex::new(fop));
+    let fop_command_service =
+        FopCommandService::start(fop.clone(), tc_scid, transmitter.clone(), registry.clone());
     (
         Service {
             tc_scid,
             sync_and_channel_coding: transmitter,
-            registry: cmd_registry.into(),
+            registry,
         },
+        fop_command_service,
         TelemetryReporter {
             aos_scid,
             receiver,
             tmiv_builder: TmivBuilder { tlm_registry },
+            fop,
         },
     )
 }
@@ -187,6 +197,7 @@ pub struct TelemetryReporter<R> {
     aos_scid: u16,
     tmiv_builder: TmivBuilder,
     receiver: R,
+    fop: Arc<Mutex<crate::fop1::Fop>>,
 }
 
 impl<R> TelemetryReporter<R>
@@ -211,12 +222,23 @@ where
                 );
                 continue;
             };
+
             let incoming_scid = tf.primary_header.scid();
             if incoming_scid != self.aos_scid {
                 warn!("unknown SCID: {incoming_scid}");
                 continue;
             }
             let vcid = tf.primary_header.vcid();
+
+            //TODO: filter by vcid??
+            {
+                let clcw = tf.trailer.into_ref().clone();
+                let mut fop = self.fop.lock().await;
+                if let Err(e) = fop.handle_clcw(clcw).await {
+                    error!("failed to handle CLCW: {:?}", e);
+                }
+            }
+
             let channel = demuxer.demux(vcid);
             let frame_count = tf.primary_header.frame_count();
             if let Err(expected) = channel.synchronizer.next(frame_count) {
@@ -233,6 +255,7 @@ where
                 channel.defragmenter.reset();
                 continue;
             }
+
             while let Some((space_packet_bytes, space_packet)) =
                 channel.defragmenter.read_as_bytes_and_packet()
             {
@@ -263,5 +286,250 @@ where
                 channel.defragmenter.advance();
             }
         }
+    }
+}
+
+pub struct FopCommandService<T> {
+    transmitter: Arc<Mutex<T>>,
+    tc_scid: u16,
+    fop: Arc<Mutex<crate::fop1::Fop>>,
+    registry: Arc<CommandRegistry>,
+}
+
+impl<T: tc::SyncAndChannelCoding + Send + 'static> FopCommandService<T> {
+    pub(crate) fn start(
+        fop: Arc<Mutex<crate::fop1::Fop>>,
+        tc_scid: u16,
+        transmitter: Arc<Mutex<T>>,
+        registry: Arc<CommandRegistry>,
+    ) -> Self {
+        let service = Self {
+            transmitter,
+            tc_scid,
+            fop,
+            registry,
+        };
+
+        tokio::spawn(Self::run_update(
+            tc_scid,
+            service.transmitter.clone(),
+            service.fop.clone(),
+        ));
+        service
+    }
+
+    async fn run_update(
+        tc_scid: u16,
+        transmitter: Arc<Mutex<T>>,
+        fop: Arc<Mutex<crate::fop1::Fop>>,
+    ) {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            //tracing::debug!("FopCommandService: update");
+            while let Some(frame) = fop.lock().await.update() {
+                tracing::debug!(
+                    "FopCommandService: retransmitting {}",
+                    frame.sequence_number
+                );
+                let mut transmitter = transmitter.lock().await;
+                let vcid = 0;
+                let _ = transmitter
+                    .transmit(
+                        tc_scid,
+                        vcid,
+                        frame.frame_type,
+                        frame.sequence_number,
+                        &frame.data_field,
+                    )
+                    .await;
+            }
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SendAdCommandError {
+    #[error("FOP is not ready")]
+    FopNotReady,
+    #[error("unknown command: {0}")]
+    UnknownCommand(String),
+    #[error("other error: {0}")]
+    Internal(anyhow::Error),
+}
+
+impl<T: tc::SyncAndChannelCoding + Send> FopCommandService<T> {
+    pub async fn send_set_vr(&self, vr: u8) {
+        let frame = {
+            let mut fop = self.fop.lock().await;
+            let frame = fop.set_vr(vr);
+            match frame {
+                Some(frame) => frame,
+                None => {
+                    //TODO: return error?
+                    return;
+                }
+            }
+        };
+
+        let vcid = 0;
+        let mut transmitter = self.transmitter.lock().await;
+        let _ = transmitter
+            .transmit(
+                self.tc_scid,
+                vcid,
+                frame.frame_type,
+                frame.sequence_number,
+                &frame.data_field,
+            )
+            .await;
+    }
+
+    pub async fn send_unlock(&self) {
+        let frame = {
+            let mut fop = self.fop.lock().await;
+            let frame = fop.unlock();
+            match frame {
+                Some(frame) => frame,
+                None => {
+                    //TODO: return error?
+                    return;
+                }
+            }
+        };
+
+        let vcid = 0;
+        let mut transmitter = self.transmitter.lock().await;
+        let _ = transmitter
+            .transmit(
+                self.tc_scid,
+                vcid,
+                frame.frame_type,
+                frame.sequence_number,
+                &frame.data_field,
+            )
+            .await;
+        //transmitter.
+    }
+
+    pub async fn send_ad_command(&self, tco: Tco) -> Result<u64, SendAdCommandError> {
+        let Some(fat_schema) = self.registry.lookup(&tco.name) else {
+            return Err(SendAdCommandError::UnknownCommand(tco.name.clone()));
+        };
+        let ctx = CommandContext {
+            tc_scid: 0, // dummy
+            fat_schema,
+            tco: &tco,
+        };
+        let mut buf = vec![0u8; 1017]; // FIXME: hard-coded max size
+        let len = ctx
+            .build_tc_segment(&mut buf)
+            .map_err(SendAdCommandError::Internal)?;
+        buf.truncate(len);
+
+        let mut fop = self.fop.lock().await;
+        let frame = match fop.send_ad(buf) {
+            None => {
+                return Err(SendAdCommandError::FopNotReady);
+            }
+            Some(frame) => frame,
+        };
+
+        let vcid = 0;
+        let mut transmitter = self.transmitter.lock().await;
+        let _ = transmitter
+            .transmit(
+                self.tc_scid,
+                vcid,
+                frame.frame_type,
+                frame.sequence_number,
+                &frame.data_field,
+            )
+            .await;
+
+        Ok(frame.id)
+    }
+
+    pub async fn clear(&self) {
+        self.fop.lock().await.clear();
+    }
+
+    pub async fn subscribe_frame_events(
+        &self,
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
+    {
+        use tokio_stream::StreamExt;
+        let rx = self.fop.lock().await.subscribe_frame_events();
+        let stream = tokio_stream::wrappers::BroadcastStream::new(rx).filter_map(|e| {
+            use crate::fop1::FrameEvent;
+            use gaia_tmtc::broker::FopFrameEvent;
+            let e = e.ok()?;
+            let e = match e {
+                FrameEvent::Transmit(id) => FopFrameEvent::Transmit(id),
+                FrameEvent::Acknowledged(id) => FopFrameEvent::Acknowledged(id),
+                FrameEvent::Retransmit(id) => FopFrameEvent::Retransmit(id),
+                FrameEvent::Cancel(id) => FopFrameEvent::Cancel(id),
+            };
+            Some(e)
+        });
+        Ok(Box::pin(stream))
+    }
+
+    pub async fn get_fop_status(&self) -> Result<gaia_tmtc::broker::FopStatus> {
+        let fop = self.fop.lock().await;
+        let last_clcw = fop
+            .last_received_farm_state()
+            .map(|s| gaia_tmtc::broker::ClcwInfo {
+                lockout: s.lockout,
+                wait: s.wait,
+                retransmit: s.retransmit,
+                next_expected_fsn: s.next_expected_fsn as _,
+            });
+        use crate::fop1::FopStateSummary;
+        use gaia_tmtc::broker::StateSummary;
+        let state_summary = match fop.state_summary() {
+            FopStateSummary::Initial => StateSummary::Initial,
+            FopStateSummary::Active => StateSummary::Active,
+            FopStateSummary::Retransmit { retransmit_count } => {
+                StateSummary::Retransmit { retransmit_count }
+            }
+        };
+        let next_fsn = fop.next_fsn();
+        Ok(gaia_tmtc::broker::FopStatus {
+            last_clcw,
+            state_summary,
+            next_fsn,
+        })
+    }
+}
+
+#[async_trait]
+impl<T: tc::SyncAndChannelCoding + Send> gaia_tmtc::broker::FopCommandService
+    for FopCommandService<T>
+{
+    async fn send_set_vr(&self, vr: u8) {
+        self.send_set_vr(vr).await
+    }
+
+    async fn send_unlock(&self) {
+        self.send_unlock().await
+    }
+
+    async fn send_ad_command(&self, tco: Tco) -> Result<u64> {
+        self.send_ad_command(tco).await.map_err(Into::into)
+    }
+
+    async fn clear(&self) {
+        self.clear().await
+    }
+
+    async fn subscribe_frame_events(
+        &self,
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = gaia_tmtc::broker::FopFrameEvent> + Send + Sync>>>
+    {
+        self.subscribe_frame_events().await
+    }
+
+    async fn get_fop_status(&self) -> Result<gaia_tmtc::broker::FopStatus> {
+        self.get_fop_status().await
     }
 }
