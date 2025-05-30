@@ -7,19 +7,26 @@
     {
       "groupName": "Typescript",
       "groupSlug": "typescript",
-      "updateTypes": ["patch"],
-      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
       "automerge": true
     },
     {
       "groupName": "Sentry",
       "groupSlug": "sentry",
-      "packageNames": ["sentry", "sentry-tracing"]
+      "matchPackageNames": [
+        "sentry",
+        "sentry-tracing"
+      ]
     },
     {
       "groupName": "http-grpc",
       "groupSlug": "http-grpc",
-      "packageNames": [
+      "matchPackageNames": [
         "tonic",
         "tonic-build",
         "tonic-health",
@@ -40,31 +47,39 @@
     {
       "groupName": "axum",
       "groupSlug": "axum",
-      "matchPackageNames": ["axum"],
-      "allowedVersions": ["0.6.20"]
+      "matchPackageNames": [
+        "axum"
+      ],
+      "allowedVersions": "0.6.20"
     },
     {
       "groupName": "tungstenite",
       "groupSlug": "tungstenite",
-      "matchPackageNames": ["tokio-tungstenite"],
-      "allowedVersions": ["0.20.1"]
+      "matchPackageNames": [
+        "tokio-tungstenite"
+      ],
+      "allowedVersions": "0.20.1"
     },
     {
       "groupName": "http",
       "groupSlug": "http",
-      "matchPackageNames": ["http"],
-      "allowedVersions": ["0.2.11"]
+      "matchPackageNames": [
+        "http"
+      ],
+      "allowedVersions": "0.2.11"
     },
     {
       "groupName": "tower-http",
       "groupSlug": "tower-http",
-      "matchPackageNames": ["tower-http"],
-      "allowedVersions": ["0.4.4"]
+      "matchPackageNames": [
+        "tower-http"
+      ],
+      "allowedVersions": "0.4.4"
     },
     {
       "groupName": "protobuf-ts",
       "groupSlug": "protobuf-ts",
-      "packageNames": [
+      "matchPackageNames": [
         "@protobuf-ts/runtime-rpc",
         "@protobuf-ts/runtime",
         "@protobuf-ts/grpcweb-transport"
