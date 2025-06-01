@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
     let (link, socket) = kble_gs::new();
     let kble_socket_fut = socket.serve((args.kble_addr, args.kble_port));
 
-    let (satellite_svc, sat_tlm_reporter) = satellite::new(
+    let (satellite_svc, fop_cmd_service, sat_tlm_reporter) = satellite::new(
         satconfig.aos_scid,
         satconfig.tc_scid,
         tlm_registry,
@@ -144,7 +144,8 @@ async fn main() -> Result<()> {
 
     // Constructing gRPC services
     let server_task = {
-        let broker_service = BrokerService::new(cmd_handler, tlm_bus, last_tmiv_store);
+        let broker_service =
+            BrokerService::new(cmd_handler, fop_cmd_service, tlm_bus, last_tmiv_store);
         let broker_server = BrokerServer::new(broker_service);
 
         let tmtc_generic_c2a_server = TmtcGenericC2aServer::new(tmtc_generic_c2a_service);
