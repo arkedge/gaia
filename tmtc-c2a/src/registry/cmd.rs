@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use gaia_ccsds_c2a::access::cmd::schema::{from_tlmcmddb, CommandSchema};
+use gaia_ccsds_c2a::access::cmd::schema::{from_tlmcmddb, CommandSchema, Metadata};
 use itertools::Itertools;
 
 use crate::proto::tmtc_generic_c2a as proto;
@@ -62,7 +62,7 @@ struct CommandSchemaWithId {
 #[derive(Debug, Clone)]
 pub struct Registry {
     prefix_map: satconfig::CommandPrefixMap,
-    schema_map: HashMap<(String, String), CommandSchemaWithId>,
+    schema_map: HashMap<(String, String), (Metadata, CommandSchemaWithId)>,
 }
 
 impl Registry {
@@ -100,16 +100,18 @@ impl Registry {
         self.schema_map
             .iter()
             .sorted_by_key(|&((component_name, _), _)| component_name)
-            .group_by(|&((component_name, _), schema_with_id)| {
+            .group_by(|&((component_name, _), (_, schema_with_id))| {
                 (component_name, schema_with_id.apid)
             })
             .into_iter()
             .map(|((component_name, apid), group)| {
                 let command_schema_map = group
-                    .map(|((_, command_name), schema_with_id)| {
+                    .map(|((_, command_name), (metadata, schema_with_id))| {
                         let trailer_parameter = if schema_with_id.schema.has_trailer_parameter {
                             Some(proto::CommandParameterSchema {
-                                metadata: Some(proto::CommandParameterSchemaMetadata {}),
+                                metadata: Some(proto::CommandParameterSchemaMetadata {
+                                    description: metadata.description.clone(),
+                                }),
                                 data_type: proto::CommandParameterDataType::CmdParameterBytes
                                     .into(),
                             })
@@ -121,7 +123,7 @@ impl Registry {
                             .sized_parameters
                             .iter()
                             .map(|param| {
-                                let data_type = match param {
+                                let data_type = match param.value {
                                     structpack::NumericField::Integral(_) => {
                                         proto::CommandParameterDataType::CmdParameterInteger
                                     }
@@ -130,7 +132,9 @@ impl Registry {
                                     }
                                 };
                                 proto::CommandParameterSchema {
-                                    metadata: Some(proto::CommandParameterSchemaMetadata {}),
+                                    metadata: Some(proto::CommandParameterSchemaMetadata {
+                                        description: param.description.clone(),
+                                    }),
                                     data_type: data_type.into(),
                                 }
                             })
@@ -140,6 +144,7 @@ impl Registry {
                         let command_schema = proto::CommandSchema {
                             metadata: Some(proto::CommandSchemaMetadata {
                                 id: schema_with_id.command_id as u32,
+                                description: metadata.description.clone(),
                             }),
                             parameters,
                         };
@@ -166,11 +171,14 @@ impl Registry {
             destination_type,
             execution_type,
         } = self.prefix_map.get(&prefix)?.get(&component)?;
-        let CommandSchemaWithId {
-            apid,
-            command_id,
-            schema,
-        } = self.schema_map.get(&(component, command))?;
+        let (
+            _,
+            CommandSchemaWithId {
+                apid,
+                command_id,
+                schema,
+            },
+        ) = self.schema_map.get(&(component, command))?;
         Some(FatCommandSchema {
             apid: *apid,
             command_id: *command_id,
@@ -190,8 +198,8 @@ impl Registry {
             .flatten()
             .map(|schema| {
                 let (metadata, schema) = schema?;
-                let component = metadata.component_name;
-                let cmddb_name = metadata.command_name;
+                let component = metadata.component_name.clone();
+                let cmddb_name = metadata.command_name.clone();
                 let apid = *apid_map
                     .get(&component)
                     .ok_or_else(|| anyhow!("APID is not defined for {component}"))?;
@@ -200,7 +208,7 @@ impl Registry {
                     command_id: metadata.cmd_id,
                     schema,
                 };
-                Ok(((component, cmddb_name), schema_with_id))
+                Ok(((component, cmddb_name), (metadata, schema_with_id)))
             })
             .collect::<Result<_>>()?;
         Ok(Self {
