@@ -73,6 +73,75 @@ mod tests {
         assert_eq!(bch, 0xCC);
     }
 
+    // bch code, without complement, lsb aligned
+    fn raw_bch(info_bytes: &[u8]) -> u8 {
+        !bch_code(info_bytes) >> 1
+    }
+
+    // input: code(x) (7 bits)
+    // output: code(x) * x
+    fn shift(code: u8) -> u8 {
+        let mut shifted = code << 1;
+        if shifted & 0b10000000 != 0 {
+            shifted ^= 0b11000101;
+        }
+        shifted
+    }
+
+    // input: code(x) (7 bits)
+    // output: code(x) * x^n
+    fn shift_n(code: u8, n: usize) -> u8 {
+        let mut shifted = code;
+        for _ in 0..n {
+            shifted = shift(shifted);
+        }
+        shifted
+    }
+
+    #[test]
+    fn test_bch_zero() {
+        let bch = raw_bch(&[0; 7]);
+        assert_eq!(bch, 0);
+    }
+
+    #[test]
+    fn test_bch_one() {
+        assert_eq!(raw_bch(&[0, 0, 0, 0, 0, 0, 1]), 0x45);
+    }
+
+    // check forall i in [0, 56), BCH(x ^ i) = x ^ (i + 7)
+    #[test]
+    fn test_bc_single_bit() {
+        for i in 0..56 {
+            let byte_pos = i / 8;
+            let bit_pos = i % 8;
+            let mut info_bytes = [0; 7];
+            info_bytes[6 - byte_pos] = 1 << bit_pos;
+            assert_eq!(raw_bch(&info_bytes), shift_n(1, i + 7));
+        }
+    }
+
+    // check forall p q, BCH(p + q) = BCH(p) + BCH(q)
+    #[test]
+    fn test_bch_homomorphism() {
+        use rand::{rngs::SmallRng, Rng, SeedableRng};
+        let seed = rand::random();
+        println!("seed = {}", seed);
+        let mut rng = SmallRng::seed_from_u64(seed);
+
+        for _ in 0..1000 {
+            let p: [u8; 7] = rng.random();
+            let q: [u8; 7] = rng.random();
+            let r: [u8; 7] = std::array::from_fn(|i| p[i] ^ q[i]);
+
+            let p_code = raw_bch(&p);
+            let q_code = raw_bch(&q);
+            let r_code = raw_bch(&r);
+
+            assert_eq!(p_code ^ q_code, r_code);
+        }
+    }
+
     #[test]
     fn test_randomize() {
         let mut bytes = vec![
