@@ -61,7 +61,16 @@ impl FloatingFieldSchema {
     }
 }
 
-pub enum FieldSchema {
+pub struct FieldSchema {
+    pub metadata: FieldMetadata,
+    pub value: FieldValueSchema,
+}
+
+pub struct FieldMetadata {
+    pub description: String,
+}
+
+pub enum FieldValueSchema {
     Integral(IntegralFieldSchema),
     Floating(FloatingFieldSchema),
 }
@@ -135,39 +144,44 @@ fn build_field_schema(
     let converter = build_integral_converter(&field.conversion_info);
     Ok((
         &field.name,
-        match obs.variable_type {
-            tlmdb::VariableType::Int8 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::I8(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Int16 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::I16(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Int32 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::I32(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Uint8 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::U8(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Uint16 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::U16(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Uint32 => FieldSchema::Integral(IntegralFieldSchema {
-                converter,
-                field: GenericIntegralField::U32(build_telemetry_integral_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Float => FieldSchema::Floating(FloatingFieldSchema {
-                converter: as_polynomial(converter)?,
-                field: GenericFloatingField::F32(build_telemetry_floating_field(bit_range)?),
-            }),
-            tlmdb::VariableType::Double => FieldSchema::Floating(FloatingFieldSchema {
-                converter: as_polynomial(converter)?,
-                field: GenericFloatingField::F64(build_telemetry_floating_field(bit_range)?),
-            }),
+        FieldSchema {
+            metadata: FieldMetadata {
+                description: field.description.clone(),
+            },
+            value: match obs.variable_type {
+                tlmdb::VariableType::Int8 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::I8(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Int16 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::I16(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Int32 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::I32(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Uint8 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::U8(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Uint16 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::U16(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Uint32 => FieldValueSchema::Integral(IntegralFieldSchema {
+                    converter,
+                    field: GenericIntegralField::U32(build_telemetry_integral_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Float => FieldValueSchema::Floating(FloatingFieldSchema {
+                    converter: as_polynomial(converter)?,
+                    field: GenericFloatingField::F32(build_telemetry_floating_field(bit_range)?),
+                }),
+                tlmdb::VariableType::Double => FieldValueSchema::Floating(FloatingFieldSchema {
+                    converter: as_polynomial(converter)?,
+                    field: GenericFloatingField::F64(build_telemetry_floating_field(bit_range)?),
+                }),
+            },
         },
     ))
 }

@@ -45,6 +45,7 @@ message CommandSchema {
 
 message CommandSchemaMetadata {
   uint32 id = 1;
+  string description = 2;
 }
 
 message CommandParameterSchema {
@@ -53,7 +54,7 @@ message CommandParameterSchema {
 }
 
 message CommandParameterSchemaMetadata {
-  // TODO: string description = 1;
+  string description = 1;
 }
 
 enum CommandParameterDataType {
@@ -74,11 +75,18 @@ message TelemetrySchemaMetadata {
 message TelemetryFieldSchema {
   TelemetryFieldSchemaMetadata metadata = 1;
   string name = 2;
-  // TODO: TelemetryFieldDataType data_type = 3;
+}
+
+enum TelemetryFieldDataType {
+  Integer = 0;
+  Double = 1;
+  Enum = 3;
+  Bytes = 4;
 }
 
 message TelemetryFieldSchemaMetadata {
-  // TODO: string description = 1;
+  string description = 1;
+  TelemetryFieldDataType data_type = 2;
 }
 
 message TelemetryChannelSchema {

@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use gaia_ccsds_c2a::access::tlm::schema::{
-    from_tlmcmddb, FieldSchema, FloatingFieldSchema, IntegralFieldSchema,
+    from_tlmcmddb, FieldSchema, FieldValueSchema, FloatingFieldSchema, IntegralFieldSchema,
 };
 use itertools::Itertools;
 
@@ -55,6 +55,16 @@ pub struct FieldMetadata {
     original_name: String,
     pub converted_name: String,
     pub raw_name: String,
+    pub description: String,
+    pub data_type: DataType,
+}
+
+#[derive(Debug, Clone)]
+pub enum DataType {
+    Integer,
+    Double,
+    Enum,
+    Bytes,
 }
 
 #[derive(Debug, Clone)]
@@ -95,7 +105,15 @@ impl Registry {
                     .chain(fat_tlm_schema.schema.floating_fields.iter().map(|(m, _)| m))
                     .sorted_by_key(|m| m.order)
                     .map(|m| proto::TelemetryFieldSchema {
-                        metadata: Some(proto::TelemetryFieldSchemaMetadata {}),
+                        metadata: Some(proto::TelemetryFieldSchemaMetadata {
+                            description: m.description.clone(),
+                            data_type: match m.data_type {
+                                DataType::Integer => proto::TelemetryFieldDataType::Integer as i32,
+                                DataType::Double => proto::TelemetryFieldDataType::Double as i32,
+                                DataType::Enum => proto::TelemetryFieldDataType::Enum as i32,
+                                DataType::Bytes => proto::TelemetryFieldDataType::Bytes as i32,
+                            },
+                        }),
                         name: m.original_name.to_string(),
                     })
                     .collect();
@@ -203,12 +221,27 @@ fn build_telemetry_schema<'a>(
     };
     for (order, pair) in iter.enumerate() {
         let (field_name, field_schema) = pair?;
-        let name_pair = build_field_metadata(order, field_name);
-        match field_schema {
-            FieldSchema::Integral(field_schema) => {
+        let data_type = match &field_schema.value {
+            FieldValueSchema::Integral(schema) => match schema.converter {
+                Some(gaia_ccsds_c2a::access::tlm::converter::Integral::Polynomial(_)) => {
+                    DataType::Double
+                }
+                Some(gaia_ccsds_c2a::access::tlm::converter::Integral::Status(_)) => DataType::Enum,
+                None => DataType::Integer,
+            },
+            FieldValueSchema::Floating(_) => DataType::Double,
+        };
+        let name_pair = build_field_metadata(
+            order,
+            field_name,
+            &field_schema.metadata.description,
+            data_type,
+        );
+        match field_schema.value {
+            FieldValueSchema::Integral(field_schema) => {
                 schema.integral_fields.push((name_pair, field_schema));
             }
-            FieldSchema::Floating(field_schema) => {
+            FieldValueSchema::Floating(field_schema) => {
                 schema.floating_fields.push((name_pair, field_schema));
             }
         }
@@ -216,11 +249,18 @@ fn build_telemetry_schema<'a>(
     Ok(schema)
 }
 
-fn build_field_metadata(order: usize, tlmdb_name: &str) -> FieldMetadata {
+fn build_field_metadata(
+    order: usize,
+    tlmdb_name: &str,
+    description: &str,
+    data_type: DataType,
+) -> FieldMetadata {
     FieldMetadata {
         order,
         original_name: tlmdb_name.to_string(),
         converted_name: tlmdb_name.to_string(),
         raw_name: format!("{tlmdb_name}@RAW"),
+        description: description.to_string(),
+        data_type,
     }
 }

@@ -2,7 +2,7 @@ use anyhow::{ensure, Result};
 use funty::{Floating, Integral};
 use structpack::{
     FloatingField, GenericFloatingField, GenericIntegralField, IntegralField, NumericField,
-    SizedField,
+    NumericValue, SizedField,
 };
 use tlmcmddb::{cmd as cmddb, Component};
 
@@ -13,20 +13,47 @@ pub struct Metadata {
     pub component_name: String,
     pub command_name: String,
     pub cmd_id: u16,
+    pub description: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct CommandSchema {
-    pub sized_parameters: Vec<NumericField>,
+    pub sized_parameters: Vec<ParameterField>,
     pub static_size: usize,
     pub has_trailer_parameter: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParameterField {
+    pub value: NumericField,
+    pub description: String,
+}
+
+impl SizedField for ParameterField {
+    type Value<'a> = NumericValue;
+
+    fn read<'a>(&self, bytes: &'a [u8]) -> Result<Self::Value<'a>> {
+        self.value.read(bytes)
+    }
+
+    fn write(&self, bytes: &mut [u8], value: Self::Value<'_>) -> Result<()> {
+        self.value.write(bytes, value)
+    }
+
+    fn last_bit_exclusive(&self) -> usize {
+        self.value.last_bit_exclusive()
+    }
+
+    fn bit_len(&self) -> usize {
+        self.value.bit_len()
+    }
 }
 
 impl CommandSchema {
     pub fn build_writer<'b>(
         &'b self,
         bytes: &'b mut [u8],
-    ) -> Writer<'b, std::slice::Iter<'b, NumericField>> {
+    ) -> Writer<'b, std::slice::Iter<'b, ParameterField>> {
         Writer::new(
             self.sized_parameters.iter(),
             self.static_size,
@@ -76,6 +103,7 @@ impl<'a> Iterator for Iter<'a> {
                 component_name: self.name.to_string(),
                 command_name: command.name.to_string(),
                 cmd_id: command.code,
+                description: command.description.to_string(),
             };
             return build_schema(command)
                 .map(|schema| Some((metadata, schema)))
@@ -92,7 +120,10 @@ fn build_schema(db: &cmddb::Command) -> Result<CommandSchema> {
     for parameter in params_iter.by_ref() {
         if let Some(field) = build_numeric_field(static_size_bits, parameter) {
             static_size_bits += field.bit_len();
-            sized_parameters.push(field);
+            sized_parameters.push(ParameterField {
+                value: field,
+                description: parameter.description.clone(),
+            });
         } else {
             // raw parameter is present
             has_trailer_parameter = true;
