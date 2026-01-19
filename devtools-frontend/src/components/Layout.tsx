@@ -68,6 +68,23 @@ const TelemetryListSidebar: React.FC<TelemetryListSidebarProps> = ({
             </span>
           </NavLink>
         </li>
+        <li>
+          <NavLink
+            to={`/charts`}
+            className={({ isActive }) =>
+              `${Classes.MENU_ITEM} ${isActive ? Classes.ACTIVE : ""}`
+            }
+          >
+            <span
+              className={`${Classes.FILL} ${Classes.TEXT_OVERFLOW_ELLIPSIS}`}
+            >
+              Charts
+            </span>
+            <span className={Classes.MENU_ITEM_LABEL}>
+              <Icon icon={IconNames.EDIT} />
+            </span>
+          </NavLink>
+        </li>
         <li className={Classes.MENU_HEADER}>
           <h6 className={Classes.HEADING}>Telemetry</h6>
         </li>

@@ -11,6 +11,7 @@ import { TelemetryView } from "./components/TelemetryView";
 import { Layout } from "./components/Layout";
 import { HelmetProvider } from "react-helmet-async";
 import { Top } from "./components/Top";
+import { ChartsView } from "./components/ChartsView";
 import { Callout, FocusStyleManager, Intent } from "@blueprintjs/core";
 import { CommandView } from "./components/CommandView";
 import { OldCommandView } from "./components/OldCommandView";
@@ -82,6 +83,10 @@ const router = createBrowserRouter(
         {
           path: "command",
           element: <OldCommandView />,
+        },
+        {
+          path: "charts",
+          element: <ChartsView />,
         },
       ],
     },
