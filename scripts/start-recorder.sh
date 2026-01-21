@@ -19,7 +19,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CURRENT_DIR_NAME="$(basename "$PROJECT_DIR")"
+CURRENT_DIR_NAME="$(basename "$SCRIPT_DIR")"
 RECORDINGS_DIR="recordings"
 PLAYBACK_MODE=false
 ENABLE_BACKUP=true
@@ -63,7 +63,7 @@ cleanup() {
         set +e
         cmd.exe /c "if exist G:\\ (exit /b 0) else (exit /b 1)" >/dev/null 2>&1
         if [ $? -eq 0 ]; then
-            DB_FILES=$(find "$RECORDINGS_DIR" -name "*.db" -type f 2>/dev/null)
+            DB_FILES=$(find "$RECORDINGS_DIR" -name "*.duckdb" -type f 2>/dev/null)
             for db in $DB_FILES; do
                 WINDOWS_SRC=$(wslpath -w "$(realpath "$db")")
                 WINDOWS_FILE=$(basename "$db")

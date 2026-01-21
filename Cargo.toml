@@ -7,7 +7,6 @@ members = [
     "gaia-tmtc",
     "gaia-ccsds-c2a",
     "tmtc-c2a",
-    "gaia-recorder",
     "devtools-frontend",
 ]
 
@@ -16,6 +15,8 @@ exclude = [
     "devtools-frontend/crates",
     # ビルド時はdevtools_frontend/crates が OUT_DIR 以下にコピーされた後wasm-pack buildされるため
     "target",
+    # DuckDB の依存関係が他のパッケージと競合するため分離
+    "gaia-recorder",
 ]
 
 [workspace.package]
@@ -30,3 +31,11 @@ gaia-stub = "1.2"
 gaia-ccsds-c2a = "1.2"
 gaia-tmtc = "1.2"
 c2a-devtools-frontend = "1.2"
+
+# Local development patches for workspace members
+[patch.crates-io]
+structpack = { path = "structpack" }
+gaia-stub = { path = "gaia-stub" }
+gaia-ccsds-c2a = { path = "gaia-ccsds-c2a" }
+gaia-tmtc = { path = "gaia-tmtc" }
+c2a-devtools-frontend = { path = "devtools-frontend" }

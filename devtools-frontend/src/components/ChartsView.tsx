@@ -216,8 +216,9 @@ const buildSeriesId = (tmivName: string, fieldName: string, isRaw: boolean) =>
 
 // Convert field name from schema format (SH_TI) to database format (SH.TI:conv or SH.TI:raw)
 const convertFieldNameForQuery = (fieldName: string, isRaw: boolean): string => {
-  const converted = fieldName.replace(/_/g, ".");
-  return `${converted}:${isRaw ? "raw" : "conv"}`;
+  // Replace underscores with dots to match database storage format
+  const baseName = fieldName.replace(/_/g, ".");
+  return `${baseName}:${isRaw ? "raw" : "conv"}`;
 };
 
 // Calculate max_points based on time range for dynamic sampling
@@ -1141,7 +1142,10 @@ export const ChartsView: React.FC = () => {
   }, [satelliteSchema, tmivSearch]);
 
   const fieldNames = useMemo(() => {
-    if (!selectedTmiv || !satelliteSchema) {
+    if (!selectedTmiv) {
+      return [];
+    }
+    if (!satelliteSchema) {
       return [];
     }
     const [, componentName, telemetryName] = selectedTmiv.split(".");

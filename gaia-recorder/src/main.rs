@@ -17,7 +17,7 @@ use gaia_stub::recorder::recorder_server::{Recorder, RecorderServer};
 use gaia_stub::recorder::{PostCommandRequest, PostCommandResponse, PostTelemetryRequest, PostTelemetryResponse};
 use gaia_stub::tco_tmiv::{self, tco_param, Tco, Tmiv, TmivField};
 use prost_types::Timestamp;
-use rusqlite::{params, Connection};
+use duckdb::{params, Connection};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -373,12 +373,15 @@ async fn query_telemetry(
     };
 
     let time_axis = query.time_axis.unwrap_or_else(|| "primary".to_string());
+    let tmiv_name = query.tmiv_name.clone();
+    let field_name = query.field_name.clone();
+    let is_raw = query.is_raw;
     let samples = tokio::task::spawn_blocking(move || {
         query_telemetry_from_db(
             &db_path,
-            &query.tmiv_name,
-            &query.field_name,
-            query.is_raw,
+            &tmiv_name,
+            &field_name,
+            is_raw,
             start_ms,
             end_ms,
             query.max_points.unwrap_or(2000),
@@ -480,9 +483,9 @@ async fn start_new_session(
     let started_at = chrono::Utc::now();
     let session_id = started_at.format("%Y%m%d_%H%M%S").to_string();
     let file_name = if suffix.is_empty() {
-        format!("recording_{session_id}.db")
+        format!("recording_{session_id}.duckdb")
     } else {
-        format!("recording_{session_id}_{suffix}.db")
+        format!("recording_{session_id}_{suffix}.duckdb")
     };
     let db_path = {
         let guard = state.read().await;
@@ -513,31 +516,33 @@ async fn start_new_session(
 
 fn init_db(path: &Path) -> Result<()> {
     let conn = Connection::open(path)?;
+
+    // DuckDB automatically uses compression; optimized data types reduce storage
     conn.execute_batch(
         "
-        PRAGMA journal_mode=WAL;
-        PRAGMA synchronous=NORMAL;
+        CREATE SEQUENCE IF NOT EXISTS seq_telemetry_samples START 1;
         CREATE TABLE IF NOT EXISTS telemetry_samples (
-            id INTEGER PRIMARY KEY,
-            tmiv_name TEXT NOT NULL,
-            field_name TEXT NOT NULL,
-            is_raw INTEGER NOT NULL,
-            time_primary_ms INTEGER NOT NULL,
-            time_received_ms INTEGER NOT NULL,
-            value_type TEXT NOT NULL,
-            value_num REAL,
-            value_int INTEGER,
-            value_text TEXT,
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_telemetry_samples'),
+            tmiv_name VARCHAR NOT NULL,
+            field_name VARCHAR NOT NULL,
+            is_raw TINYINT NOT NULL,
+            time_primary_ms BIGINT NOT NULL,
+            time_received_ms BIGINT NOT NULL,
+            value_type VARCHAR(20) NOT NULL,
+            value_num DOUBLE,
+            value_int BIGINT,
+            value_text VARCHAR,
             value_bytes BLOB
         );
         CREATE INDEX IF NOT EXISTS idx_telemetry_query
             ON telemetry_samples (tmiv_name, field_name, is_raw, time_primary_ms);
 
+        CREATE SEQUENCE IF NOT EXISTS seq_command_logs START 1;
         CREATE TABLE IF NOT EXISTS command_logs (
-            id INTEGER PRIMARY KEY,
-            time_ms INTEGER NOT NULL,
-            command_name TEXT NOT NULL,
-            params_json TEXT NOT NULL
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_command_logs'),
+            time_ms BIGINT NOT NULL,
+            command_name VARCHAR NOT NULL,
+            params_json VARCHAR NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_command_time ON command_logs (time_ms);
         ",
@@ -638,16 +643,19 @@ async fn insert_tmiv(state: &Arc<RwLock<RecorderState>>, tmiv: &Tmiv) -> Result<
 }
 
 fn insert_tmiv_field(
-    tx: &rusqlite::Transaction<'_>,
+    tx: &duckdb::Transaction<'_>,
     tmiv_name: &str,
     field: &TmivField,
     time_primary_ms: i64,
     time_received_ms: i64,
 ) -> Result<()> {
+    // Store field_name with :raw or :conv suffix (same format as CSV import)
     let (field_name, is_raw) = if field.name.ends_with("@RAW") {
-        (field.name.trim_end_matches("@RAW").to_string(), 1)
+        let base_name = field.name.trim_end_matches("@RAW").replace('_', ".");
+        (format!("{}:raw", base_name), 1)
     } else {
-        (field.name.clone(), 0)
+        let base_name = field.name.replace('_', ".");
+        (format!("{}:conv", base_name), 0)
     };
 
     let mut value_num: Option<f64> = None;
@@ -735,7 +743,7 @@ fn query_telemetry_from_db(
     db_path: &str,
     tmiv_name: &str,
     field_name: &str,
-    is_raw: bool,
+    _is_raw: bool,
     start_ms: i64,
     end_ms: i64,
     max_points: usize,
@@ -750,13 +758,12 @@ fn query_telemetry_from_db(
     let mut stmt = conn.prepare(&format!(
         "SELECT {time_column}, value_type, value_num, value_int, value_text, value_bytes
          FROM telemetry_samples
-         WHERE tmiv_name = ?1 AND field_name = ?2 AND is_raw = ?3 AND {time_column} BETWEEN ?4 AND ?5
+         WHERE tmiv_name = ?1 AND field_name = ?2 AND {time_column} BETWEEN ?3 AND ?4
          ORDER BY {time_column} ASC"
     ))?;
 
-    let raw_flag = if is_raw { 1 } else { 0 };
     let rows = stmt.query_map(
-        params![tmiv_name, field_name, raw_flag, start_ms, end_ms],
+        params![tmiv_name, field_name, start_ms, end_ms],
         |row| {
             let time_ms: i64 = row.get(0)?;
             let value_type: String = row.get(1)?;
@@ -908,12 +915,12 @@ fn list_recording_files(data_dir: &Path) -> Result<Vec<RecordingListItem>> {
             continue;
         }
         let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if !file_name.starts_with("recording_") || !file_name.ends_with(".db") {
+        if !file_name.starts_with("recording_") || !file_name.ends_with(".duckdb") {
             continue;
         }
         let trimmed = file_name
             .trim_start_matches("recording_")
-            .trim_end_matches(".db");
+            .trim_end_matches(".duckdb");
         // Split into at most 3 parts: YYYYMMDD, HHMMSS, and optional suffix
         let parts: Vec<&str> = trimmed.splitn(3, '_').collect();
         let (session_id, suffix) = if parts.len() >= 2 {

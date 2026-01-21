@@ -111,7 +111,7 @@ DATE_PART=$(echo "$TIMESTAMP_DATE" | sed 's/-//g')
 TIME_PART=$(echo "$TIMESTAMP_TIME" | cut -d':' -f1-2 | sed 's/://g')
 SESSION_ID="${DATE_PART}_${TIME_PART}"
 
-DB_FILE="$RECORDINGS_DIR/recording_${SESSION_ID}.db"
+DB_FILE="$RECORDINGS_DIR/recording_${SESSION_ID}.duckdb"
 
 # Check if database already exists
 SKIP_IMPORT=false
@@ -134,16 +134,16 @@ fi
 # Import CSV to database
 if [ "$SKIP_IMPORT" != true ]; then
     mkdir -p "$RECORDINGS_DIR"
-    cargo run --package gaia-recorder --bin import-csv -- \
+    (cd "$PROJECT_ROOT/gaia-recorder" && cargo run --release --bin import-csv -- \
         --input-dir "$EXTRACTED_DIR" \
-        --output-db "$DB_FILE"
+        --output-db "$DB_FILE")
 fi
 
 # Start gaia-recorder
-cargo run --package gaia-recorder --bin gaia-recorder -- \
+(cd "$PROJECT_ROOT/gaia-recorder" && cargo run --release --bin gaia-recorder -- \
     --playback-mode \
-    --data-dir "$RECORDINGS_DIR" \
-    --schema-file tmtc-c2a/satconfig.json \
+    --data-dir "recordings" \
+    --schema-file "../tmtc-c2a/satconfig.json") \
     > /tmp/gaia-recorder.log 2>&1 &
 RECORDER_PID=$!
 

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::Parser;
-use rusqlite::{params, Connection};
+use duckdb::{params, Connection};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "Import CSV telemetry and command logs to gaia-recorder database")]
@@ -65,39 +65,40 @@ fn main() -> Result<()> {
 }
 
 fn init_db(conn: &Connection) -> Result<()> {
-    // Enable optimizations (use execute_batch for PRAGMAs)
-    conn.execute_batch(
-        "PRAGMA journal_mode = OFF;
-         PRAGMA synchronous = OFF;
-         PRAGMA page_size = 4096;
-         PRAGMA cache_size = -64000;"  // 64MB cache
-    )?;
-
+    // DuckDB automatically uses compression; optimized data types reduce storage
     // Create tables without indexes first (indexes will be created after data insertion)
     // Schema must match gaia-recorder's main.rs schema exactly
     conn.execute(
+        "CREATE SEQUENCE IF NOT EXISTS seq_telemetry_samples START 1",
+        [],
+    )?;
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS telemetry_samples (
-            id INTEGER PRIMARY KEY,
-            tmiv_name TEXT NOT NULL,
-            field_name TEXT NOT NULL,
-            is_raw INTEGER NOT NULL,
-            time_primary_ms INTEGER NOT NULL,
-            time_received_ms INTEGER NOT NULL,
-            value_type TEXT NOT NULL,
-            value_num REAL,
-            value_int INTEGER,
-            value_text TEXT,
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_telemetry_samples'),
+            tmiv_name VARCHAR NOT NULL,
+            field_name VARCHAR NOT NULL,
+            is_raw TINYINT NOT NULL,
+            time_primary_ms BIGINT NOT NULL,
+            time_received_ms BIGINT NOT NULL,
+            value_type VARCHAR(20) NOT NULL,
+            value_num DOUBLE,
+            value_int BIGINT,
+            value_text VARCHAR,
             value_bytes BLOB
         )",
         [],
     )?;
 
     conn.execute(
+        "CREATE SEQUENCE IF NOT EXISTS seq_command_logs START 1",
+        [],
+    )?;
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS command_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            time_ms INTEGER NOT NULL,
-            command_name TEXT NOT NULL,
-            params_json TEXT
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_command_logs'),
+            time_ms BIGINT NOT NULL,
+            command_name VARCHAR NOT NULL,
+            params_json VARCHAR
         )",
         [],
     )?;
@@ -144,117 +145,102 @@ fn import_telemetry_csv(conn: &Connection, csv_path: &Path) -> Result<()> {
         .context("Invalid filename")?
         .to_string();
 
+    // Step 1: Read CSV header to get column names
     let file = File::open(csv_path)?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
-
-    // Parse header
     let header = lines.next().context("Empty CSV file")??;
     let headers: Vec<&str> = header.split(',').collect();
 
-    let mut tx = conn.unchecked_transaction()?;
-    let mut count = 0;
+    // Step 2: Create temporary table and load CSV using DuckDB native import
+    let csv_path_str = csv_path.to_str().context("Invalid path")?;
+    conn.execute(
+        &format!(
+            "CREATE TEMP TABLE temp_csv AS SELECT * FROM read_csv_auto('{}', header=true, all_varchar=true)",
+            csv_path_str
+        ),
+        [],
+    )?;
 
-    for line in lines {
-        let line = line?;
-        let values: Vec<&str> = line.split(',').collect();
+    println!("    Loaded CSV into temporary table");
 
-        if values.len() != headers.len() {
-            continue;
+    // Step 3: Transform and insert data using SQL
+    // Build column transformation expressions for UNPIVOT
+    let mut column_exprs = Vec::new();
+    for (i, header) in headers.iter().enumerate() {
+        if i == 0 {
+            continue; // Skip timestamp column
         }
 
-        // Parse timestamp
-        let timestamp_str = values[0];
-        let time_ms = parse_telemetry_timestamp(timestamp_str)?;
+        // Convert field name format:
+        // - Replace underscore with dot: SH_TI -> SH.TI
+        // - Replace @RAW suffix with :raw: SH_TI@RAW -> SH.TI:raw
+        // - Add :conv suffix if no @RAW: SH_TI -> SH.TI:conv
+        let field_name_clean = if header.contains("@RAW") {
+            header.replace("@RAW", ":raw").replace('_', ".")
+        } else {
+            format!("{}:conv", header.replace('_', "."))
+        };
 
-        // Insert each field
-        for i in 1..headers.len() {
-            let field_name = headers[i];
-            let value = values[i];
+        let is_raw = if field_name_clean.ends_with(":raw") { 1 } else { 0 };
 
-            // Convert field name format:
-            // - Replace underscore with dot: SH_TI -> SH.TI
-            // - Replace @RAW suffix with :raw: SH_TI@RAW -> SH.TI:raw
-            // - Add :conv suffix if no @RAW: SH_TI -> SH.TI:conv
-            let field_name_clean = if field_name.contains("@RAW") {
-                field_name
-                    .replace("@RAW", ":raw")
-                    .replace('_', ".")
-            } else {
-                format!("{}:conv", field_name.replace('_', "."))
-            };
-
-            // Determine value type and parse
-            if value.is_empty() {
-                continue;
-            }
-
-            let (value_type, value_num, value_int, value_text) =
-                parse_telemetry_value(value, field_name);
-
-            // Determine is_raw flag based on field name
-            let is_raw = if field_name_clean.ends_with(":raw") { 1 } else { 0 };
-
-            // time_received_ms is same as time_primary_ms for CSV imports
-            let time_received_ms = time_ms;
-
-            tx.execute(
-                "INSERT INTO telemetry_samples
-                 (tmiv_name, field_name, is_raw, time_primary_ms, time_received_ms, value_type, value_num, value_int, value_text, value_bytes)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                params![
-                    &tmiv_name,
-                    &field_name_clean,
-                    is_raw,
-                    time_ms,
-                    time_received_ms,
-                    &value_type,
-                    value_num,
-                    value_int,
-                    value_text,
-                    None::<Vec<u8>>,
-                ],
-            )?;
-
-            count += 1;
-            if count % 50000 == 0 {
-                tx.commit()?;
-                tx = conn.unchecked_transaction()?;
-                print!("    Inserted {} samples\r", count);
-            }
-        }
+        // Use column name with quotes to handle special characters
+        // Parse timestamp: Truncate nanoseconds to microseconds and remove space before timezone
+        // Format: "2026-01-21 07:03:45.066818027 +00:00" (36 chars) -> "2026-01-21 07:03:45.066818+00:00" (32 chars)
+        // Take first 26 chars (up to microseconds) + last 6 chars (timezone)
+        column_exprs.push(format!(
+            "SELECT
+                '{tmiv_name}' as tmiv_name,
+                '{field_name_clean}' as field_name,
+                {is_raw} as is_raw,
+                CAST(epoch_ms(CAST(
+                    SUBSTRING(\"{}\"::VARCHAR, 1, 26) || SUBSTRING(\"{}\"::VARCHAR, LENGTH(\"{}\"::VARCHAR) - 5)
+                AS TIMESTAMP)) AS BIGINT) as time_primary_ms,
+                CAST(epoch_ms(CAST(
+                    SUBSTRING(\"{}\"::VARCHAR, 1, 26) || SUBSTRING(\"{}\"::VARCHAR, LENGTH(\"{}\"::VARCHAR) - 5)
+                AS TIMESTAMP)) AS BIGINT) as time_received_ms,
+                CASE
+                    WHEN \"{}\"::VARCHAR = '' THEN NULL
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NOT NULL THEN 'int'
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NOT NULL THEN 'num'
+                    ELSE 'text'
+                END as value_type,
+                CASE
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NOT NULL AND TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NULL
+                    THEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE)
+                    ELSE NULL
+                END as value_num,
+                TRY_CAST(\"{}\"::VARCHAR AS BIGINT) as value_int,
+                CASE
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NULL AND TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NULL AND \"{}\"::VARCHAR != ''
+                    THEN \"{}\"::VARCHAR
+                    ELSE NULL
+                END as value_text,
+                NULL as value_bytes
+            FROM temp_csv
+            WHERE \"{}\"::VARCHAR != ''",
+            headers[0], headers[0], headers[0], headers[0], headers[0], headers[0], header, header, header, header, header, header, header, header, header, header, header, header
+        ));
     }
 
-    tx.commit()?;
+    // Combine all columns with UNION ALL
+    let insert_query = format!(
+        "INSERT INTO telemetry_samples
+         (tmiv_name, field_name, is_raw, time_primary_ms, time_received_ms, value_type, value_num, value_int, value_text, value_bytes)
+         {}",
+        column_exprs.join("\nUNION ALL\n")
+    );
+
+    // Execute the bulk insert
+    let count = conn.execute(&insert_query, [])?;
     println!("    Inserted {} samples total", count);
+
+    // Step 4: Drop temporary table
+    conn.execute("DROP TABLE temp_csv", [])?;
 
     Ok(())
 }
 
-fn parse_telemetry_timestamp(timestamp_str: &str) -> Result<i64> {
-    // Format: "2026-01-13 08:23:58.728680890 +00:00"
-    // Parse with chrono
-    let dt = DateTime::parse_from_str(timestamp_str, "%Y-%m-%d %H:%M:%S%.f %z")
-        .context("Failed to parse timestamp")?;
-    Ok(dt.timestamp_millis())
-}
-
-fn parse_telemetry_value(value: &str, _field_name: &str) -> (String, Option<f64>, Option<i64>, Option<String>) {
-    // Check if it's a RAW field (ends with @RAW)
-    // let _is_raw = field_name.ends_with("@RAW");
-
-    // Try to parse as number
-    if let Ok(num) = value.parse::<i64>() {
-        return ("int".to_string(), None, Some(num), None);
-    }
-
-    if let Ok(num) = value.parse::<f64>() {
-        return ("num".to_string(), Some(num), None, None);
-    }
-
-    // Otherwise it's text
-    ("text".to_string(), None, None, Some(value.to_string()))
-}
 
 fn import_command_dir(conn: &Connection, cmd_dir: &Path) -> Result<()> {
     for entry in std::fs::read_dir(cmd_dir)? {

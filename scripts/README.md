@@ -42,7 +42,7 @@ gaia-recorderをRTモード（またはプレイバックモード）で起動�
 
 終了時（Ctrl+C）に自動的にデータベースファイルをGドライブにバックアップします。
 
-- バックアップ元: `gaia-recorder/recordings/*.db`
+- バックアップ元: `gaia-recorder/recordings/*.duckdb`
 - バックアップ先: `/mnt/g/共有ドライブ/ArkEdge Users/HirokiHarada/zatsu/ログデータ`
 - rsyncを使用して差分コピー（既に存在するファイルはスキップ）
 - バックアップに失敗してもスクリプトは正常終了します
@@ -63,7 +63,7 @@ gaia-recorderのログは以下に出力されます：
 
 ### 機能
 
-- ZIPファイルからCSVデータをSQLiteデータベースに自動変換
+- ZIPファイルからCSVデータをDuckDBデータベースに自動変換
 - gaia-recorderをプレイバックモードで起動
 - tmtc-c2aを起動してdevtoolsを提供
 - 終了時に一時データベースファイルを自動削除
@@ -101,7 +101,7 @@ gaia-recorderのログは以下に出力されます：
 オプションなしで起動し、既に変換済みのデータベースが存在する場合、再利用するか確認されます。
 
 ```
-Database already exists: gaia-recorder/recordings/recording_20260113_0823.db
+Database already exists: gaia-recorder/recordings/recording_20260113_0823.duckdb
 Reuse existing database? (y/N) y
 ```
 
@@ -122,11 +122,12 @@ Reuse existing database? (y/N) y
 ### 注意事項
 
 1. **データベースサイズ**: CSVデータの約20倍のサイズになります
-   - 例: 70MBのCSV → 約1.6GBのSQLite DB
+   - 例: 70MBのCSV → 約1.6GBのDuckDB
    - 十分なディスク容量を確保してください
 
 2. **インポート時間**: データ量に応じて数分かかる場合があります
    - 約17万レコード/分の処理速度
+   - `--release`ビルドにより高速化
 
 3. **必要なファイル**:
    - `tmtc-c2a/satconfig.json`
@@ -150,7 +151,7 @@ cat /tmp/tmtc-c2a.log
 
 手動で削除：
 ```bash
-rm -f gaia-recorder/recordings/recording_*.db
+rm -f gaia-recorder/recordings/recording_*.duckdb
 ```
 
 #### ポートが既に使用されている
