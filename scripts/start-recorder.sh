@@ -17,14 +17,14 @@
 
 set -e
 
-# Script directory (base for relative paths)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Configuration
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CURRENT_DIR_NAME="$(basename "$PROJECT_DIR")"
 RECORDINGS_DIR="recordings"
 PLAYBACK_MODE=false
 ENABLE_BACKUP=true
 RECORDER_PID=""
+CLEANUP_DONE=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -46,57 +46,52 @@ done
 
 # Cleanup function
 cleanup() {
-    echo "$(date +"%Y-%m-%dT%H:%M:%S%z") cleanup: start" >> /tmp/gaia-recorder.log
-    # Kill gaia-recorder
+    if [ "$CLEANUP_DONE" = true ]; then
+        return
+    fi
+    CLEANUP_DONE=true
+
     if [ -n "$RECORDER_PID" ]; then
         kill $RECORDER_PID 2>/dev/null || true
         wait $RECORDER_PID 2>/dev/null || true
     fi
 
-    # # Backup database to G drive if enabled
-    # if [ "$ENABLE_BACKUP" = true ] && [ -d "$RECORDINGS_DIR" ]; then
-    #     G_DRIVE_PATH="/mnt/g/共有ドライブ/ArkEdge Users/HirokiHarada/zatsu/ログデータ"
-
-    #     if [ -d "$G_DRIVE_PATH" ]; then
-    #         DB_FILES=$(find "$RECORDINGS_DIR" -name "*.db" -type f 2>/dev/null)
-    #         if [ -n "$DB_FILES" ]; then
-    #             rsync -av --ignore-existing $DB_FILES "$G_DRIVE_PATH/" 2>&1 | grep -q "recording_" && \
-    #                 echo "Database backup completed" || \
-    #                 echo "All databases already exist on G drive"
-    #         fi
-    #     fi
-    # fi
-
     # Backup database to G drive if enabled
-    # if [ "$ENABLE_BACKUP" = true ] && [ -d "$RECORDINGS_DIR" ]; then
-    #     G_DRIVE_DST="G:\\共有ドライブ\\ArkEdge Users\\HirokiHarada\\zatsu\\ログデータ"
+    if [ "$ENABLE_BACKUP" = true ] && [ -d "$RECORDINGS_DIR" ]; then
+        G_DRIVE_BASE='G:\共有ドライブ\ArkEdge Users\HirokiHarada\zatsu\ログデータ'
 
-    #     set +e
-    #     cmd.exe /c "pushd C:\\ >nul 2>&1 && if exist G:\\ (exit /b 0) else exit /b 2" >nul 2>&1
-    #     G_DRIVE_RC=$?
-    #     set -e
-    #     echo "gdrive rc=$G_DRIVE_RC" >> /tmp/gaia-recorder.log
-    #     if [ $G_DRIVE_RC -eq 0 ]; then
-    #         DB_FILES=$(find "$RECORDINGS_DIR" -name "*.db" -type f 2>/dev/null)
-    #         if [ -n "$DB_FILES" ]; then
-    #             for db in $DB_FILES; do
-    #                 WINDOWS_DIR=$(wslpath -w "$(dirname "$db")")
-    #                 WINDOWS_FILE=$(basename "$db")
-    #                 set +e
-    #                 cmd.exe /c "pushd \"$WINDOWS_DIR\" && robocopy . \"$G_DRIVE_DST\" \"$WINDOWS_FILE\" /XN /NJH /NJS /NDL /NC /NS & set RC=%ERRORLEVEL% & popd & exit /b %RC%" >nul 2>&1
-    #                 RC=$?
-    #                 set -e
-    #                 echo "robocopy rc=$RC file=$(basename "$db")" >> /tmp/gaia-recorder.log
-    #                 [ $RC -le 1 ] && echo "Backed up: $(basename "$db")" || true
-    #             done
-    #         fi
-    #     fi
-    # fi
+        set +e
+        cmd.exe /c "if exist G:\\ (exit /b 0) else (exit /b 1)" >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            DB_FILES=$(find "$RECORDINGS_DIR" -name "*.db" -type f 2>/dev/null)
+            for db in $DB_FILES; do
+                WINDOWS_SRC=$(wslpath -w "$(realpath "$db")")
+                WINDOWS_FILE=$(basename "$db")
+                powershell.exe -NoProfile -Command "
+                    \$base = '$G_DRIVE_BASE'
+                    \$dirName = '$CURRENT_DIR_NAME'
+                    \$targetDir = Join-Path \$base \$dirName
+                    \$src = '$WINDOWS_SRC'
+                    \$dst = Join-Path \$targetDir '$WINDOWS_FILE'
 
-    echo "$(date +"%Y-%m-%dT%H:%M:%S%z") cleanup: end" >> /tmp/gaia-recorder.log
+                    if (-not (Test-Path \$targetDir)) {
+                        New-Item -Path \$targetDir -ItemType Directory -Force | Out-Null
+                    }
+
+                    if (-not (Test-Path \$dst)) {
+                        Copy-Item -Path \$src -Destination \$targetDir -ErrorAction SilentlyContinue
+                        if (\$?) { exit 0 } else { exit 1 }
+                    } else {
+                        exit 0
+                    }
+                " >/dev/null 2>&1
+                [ $? -eq 0 ] && echo "Backed up: $CURRENT_DIR_NAME/$WINDOWS_FILE"
+            done
+        fi
+        set -e
+    fi
 }
 
-# Set trap to cleanup on exit
 trap cleanup EXIT INT TERM
 
 # Build command arguments
@@ -111,7 +106,5 @@ echo "Starting gaia-recorder with args: $RECORDER_ARGS"
 
 RECORDER_PID=$!
 echo "gaia-recorder started (PID: $RECORDER_PID)"
-# echo "Log: /tmp/gaia-recorder.log"
 
-# Wait for user interrupt
 wait

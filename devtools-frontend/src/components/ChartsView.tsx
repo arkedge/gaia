@@ -589,26 +589,12 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
       axes.push({
         scale: `y_${s.id}`,
         side: 2,
-        show: true,
+        show: false, // Hide axis - only show color markers
         stroke: axisStroke,
         grid: { show: false },
-        values: (_u, vals) => {
-          const currentMap = valueMapsRef.current.get(s.id);
-          if (!currentMap) {
-            return vals.map(() => "");
-          }
-          const valueToLabel = new Map<number, string>();
-          currentMap.forEach((value, label) => valueToLabel.set(value, label));
-          return vals.map((val) => mapValueToLabel(valueToLabel, val));
-        },
-        splits: () => {
-          const currentMap = valueMapsRef.current.get(s.id);
-          if (!currentMap) {
-            return [];
-          }
-          return Array.from(currentMap.values()).sort((a, b) => a - b);
-        },
-        size: 160,
+        values: () => [], // No text labels
+        splits: () => [], // No splits
+        size: 0,
         font: "11px monospace",
       });
       scales[`y_${s.id}`] = {
@@ -859,9 +845,9 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
                 // Draw Y-axis color indicators for categorical series
                 if (categoricalSeries.length > 0 && !hasNumericSeries) {
                   ctx.save();
-                  const indicatorWidth = 24;  // 拡大: 8px -> 24px
-                  const indicatorHeight = 24; // 拡大: 12px -> 24px
-                  const xPos = 8; // Y軸内で中央寄せ (40px幅の中央付近)
+                  const indicatorWidth = 8;
+                  const indicatorHeight = 8;
+                  const xPos = 12; // Y軸内で中央寄せ (40px幅の中央付近)
 
                   for (const [idx, s] of categoricalSeries.entries()) {
                     const scale = "y";
@@ -901,20 +887,28 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
       );
       plotRef.current = plot;
     }
-    const prevScale = plotRef.current.scales.x;
-    const keepScale = !follow && prevScale.min !== null && prevScale.max !== null;
+    console.log('[ChartPanel] follow:', follow, 'manualTimeRange:', manualTimeRange);
     plotRef.current.setData(data as uPlot.AlignedData);
     if (manualTimeRange) {
-      // Use manual time range from slider
+      // Use manual time range from slider or zoom
       const startSec = manualTimeRange.startMs / 1000;
       const endSec = manualTimeRange.endMs / 1000;
+      console.log('[ChartPanel] Using manual time range:', startSec, '-', endSec);
       plotRef.current.setScale("x", { min: startSec, max: endSec });
-    } else if (keepScale) {
-      plotRef.current.setScale("x", { min: prevScale.min, max: prevScale.max });
     } else if (follow) {
       const endSec = Date.now() / 1000;
       const startSec = endSec - rangeMinutes * 60;
+      console.log('[ChartPanel] Using follow mode:', startSec, '-', endSec);
       plotRef.current.setScale("x", { min: startSec, max: endSec });
+    } else {
+      // Auto-scale to data range (e.g., after reset in playback mode or when no zoom/slider active)
+      const xData = data[0] as number[];
+      if (xData && xData.length > 0) {
+        const minTime = xData[0];
+        const maxTime = xData[xData.length - 1];
+        console.log('[ChartPanel] Auto-scaling to data range:', minTime, '-', maxTime);
+        plotRef.current.setScale("x", { min: minTime, max: maxTime });
+      }
     }
   }, [
     series,
@@ -967,6 +961,7 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
             minimal
             small
             icon={IconNames.ZOOM_TO_FIT}
+            text="Reset Zoom"
             onClick={() => {
               plotRef.current?.setScale("x", { min: null, max: null });
               onResetZoom();
@@ -1352,9 +1347,17 @@ export const ChartsView: React.FC = () => {
   }, []);
 
   const handleResetZoom = useCallback(() => {
-    setFollow(true);
+    console.log('[handleResetZoom] isPlaybackMode:', isPlaybackMode, 'follow:', follow);
+    // In playback mode, don't enable follow (which uses current time)
+    // Instead, just clear the zoom range to show all data
+    if (!isPlaybackMode) {
+      setFollow(true);
+    } else {
+      setFollow(false);
+    }
     setZoomedRange(null);
-  }, []);
+    setUseTimeSlider(false);
+  }, [isPlaybackMode, follow]);
 
   useEffect(() => {
     if (activeSeries.length === 0) {
