@@ -214,6 +214,26 @@ const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
 const buildSeriesId = (tmivName: string, fieldName: string, isRaw: boolean) =>
   `${tmivName}:${fieldName}:${isRaw ? "raw" : "conv"}`;
 
+// Convert field name from schema format (SH_TI) to database format (SH.TI:conv or SH.TI:raw)
+const convertFieldNameForQuery = (fieldName: string, isRaw: boolean): string => {
+  const converted = fieldName.replace(/_/g, ".");
+  return `${converted}:${isRaw ? "raw" : "conv"}`;
+};
+
+// Calculate max_points based on time range for dynamic sampling
+// Narrow time ranges get more detail, wider ranges get downsampled
+const calculateMaxPoints = (timeRangeMs: number): number => {
+  const seconds = timeRangeMs / 1000;
+
+  if (seconds <= 60) return 60000;     // 1 min or less: ~1 point per second
+  if (seconds <= 300) return 30000;    // 5 min: high detail
+  if (seconds <= 600) return 20000;    // 10 min: high detail
+  if (seconds <= 1800) return 10000;   // 30 min: medium detail
+  if (seconds <= 3600) return 5000;    // 1 hour: medium detail
+  if (seconds <= 7200) return 3000;    // 2 hours: normal detail
+  return 2000;                         // > 2 hours: lower detail
+};
+
 const buildQueryParams = (
   params: Record<string, string | number | boolean | undefined>,
 ) => {
@@ -244,10 +264,11 @@ type ChartPanelProps = {
   showCommands: boolean;
   follow: boolean;
   rangeMinutes: number;
+  manualTimeRange?: { startMs: number; endMs: number } | null;
   onToggleShowCommands: () => void;
   onRemoveSeries: (id: string) => void;
   onToggleSeriesMode: (id: string) => void;
-  onZoom: () => void;
+  onZoom: (startSec: number, endSec: number) => void;
   onResetZoom: () => void;
   valueMapsRef: React.MutableRefObject<Map<string, Map<string, number>>>;
 };
@@ -260,6 +281,7 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
   showCommands,
   follow,
   rangeMinutes,
+  manualTimeRange,
   onToggleShowCommands,
   onRemoveSeries,
   onToggleSeriesMode,
@@ -271,7 +293,6 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
   const plotRef = useRef<uPlot | null>(null);
   const commandsRef = useRef<CommandLogItem[]>(commands);
   const showCommandsRef = useRef<boolean>(showCommands);
-  const [cursorText, setCursorText] = useState<string>("");
   const seriesKeyRef = useRef<string>("");
   // Store time->label mapping for each series to use during drawing
   const timeLabelMapsRef = useRef<Map<string, Map<number, string>>>(new Map());
@@ -423,7 +444,25 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
     );
     const hasNumericSeries = categoricalSeries.length !== series.length;
     return [
-      {},
+      {
+        // X軸（時間）のツールチップ表示をミリ秒精度でフォーマット
+        value: (_self: any, rawValue: number) => {
+          console.log('[X-axis value] rawValue:', rawValue);
+          const date = new Date(rawValue * 1000);
+          const formatted = date.toLocaleString('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            fractionalSecondDigits: 3,
+            hour12: false
+          });
+          console.log('[X-axis value] formatted:', formatted);
+          return formatted;
+        }
+      } as uPlot.Series,
       ...series.map((s) => {
         const isCategorical = (valueMapsRef.current.get(s.id)?.size ?? 0) > 0;
         return {
@@ -435,7 +474,7 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
           scale: isCategorical
             ? (hasNumericSeries ? `y_${s.id}` : "y")
             : "y",
-        };
+        } as uPlot.Series;
       }),
     ];
   }, [series]);
@@ -445,7 +484,8 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
       (s) => (valueMapsRef.current.get(s.id)?.size ?? 0) > 0,
     );
     const hasNumericSeries = categoricalSeries.length !== series.length;
-    const yAxisSize = hasNumericSeries ? 56 : 200;
+    // Y軸幅を統一: 両パネルのグラフ開始地点を揃えるため常に40px
+    const yAxisSize = 40;
     const axes: uPlot.Axis[] = [
       {
         scale: "x",
@@ -454,37 +494,69 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
         grid: { show: true, stroke: gridStroke },
         size: 46,
         font: "11px monospace",
-        values: (_u, vals) =>
-          vals.map((val) => new Date(val * 1000).toLocaleTimeString()),
+        space: 80,  // 目盛り間の最小ピクセル数（重複を防ぐ）
+        // 時刻表示の間隔を制御: ミリ秒精度で重複を防ぐ
+        // incrs: 表示する時間間隔の候補（秒単位）
+        incrs: [
+          0.1,    // 100ms
+          0.2,    // 200ms
+          0.5,    // 500ms
+          1,      // 1秒
+          2,      // 2秒
+          5,      // 5秒
+          10,     // 10秒
+          15,     // 15秒
+          30,     // 30秒
+          60,     // 1分
+          120,    // 2分
+          300,    // 5分
+          600,    // 10分
+          900,    // 15分
+          1800,   // 30分
+          3600,   // 1時間
+        ],
+        values: (u, vals) => {
+          // 表示範囲から時間間隔を推定
+          if (vals.length < 2) return vals.map(() => '');
+          const timeRange = vals[vals.length - 1] - vals[0];
+          const avgInterval = timeRange / (vals.length - 1);
+
+          // 1秒未満の間隔ならミリ秒表示、それ以外は秒まで
+          const showMilliseconds = avgInterval < 1;
+
+          return vals.map((val) => {
+            const date = new Date(val * 1000);
+            if (showMilliseconds) {
+              // ミリ秒精度: HH:MM:SS.mmm
+              return date.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+                hour12: false
+              });
+            } else {
+              // 秒精度: HH:MM:SS
+              return date.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              });
+            }
+          });
+        },
       },
       {
         scale: "y",
-        show: true,
+        show: !hasNumericSeries && categoricalSeries.length > 0 ? false : true, // Categoricalの場合は軸自体を非表示
         stroke: axisStroke,
         grid: { show: true, stroke: gridStroke },
         size: yAxisSize,
-        font: "11px monospace",
-        values:
-          !hasNumericSeries && categoricalSeries.length > 0
-            ? (_u, vals) => {
-                // Always show series labels (field names) on y-axis
-                return vals.map((val) => {
-                  const idx = Math.round(val);
-                  if (idx >= 0 && idx < categoricalSeries.length) {
-                    const s = categoricalSeries[idx];
-                    return `${s.tmivName}.${s.fieldName}`;
-                  }
-                  return "";
-                });
-              }
-            : undefined,
-        splits:
-          !hasNumericSeries && categoricalSeries.length > 0
-            ? () => {
-                // Always one tick per series
-                return categoricalSeries.map((_, idx) => idx);
-              }
-            : undefined,
+        font: "10px monospace",
+        labelSize: 0, // Hide axis label space
+        values: undefined, // ラベルは表示しない
+        splits: undefined,
       },
     ];
     const scales: uPlot.Scales = {
@@ -580,7 +652,6 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
       if (plotRef.current) {
         plotRef.current.destroy();
         plotRef.current = null;
-        setCursorText("");
       }
       return;
     }
@@ -604,7 +675,6 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
     if (seriesKeyRef.current !== nextSeriesKey && plotRef.current) {
       plotRef.current.destroy();
       plotRef.current = null;
-      setCursorText("");
     }
     seriesKeyRef.current = nextSeriesKey;
     if (!plotRef.current) {
@@ -620,6 +690,10 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
           cursor: {
             drag: { x: true, y: false },
             focus: { prox: 16 },
+          },
+          legend: {
+            show: true,
+            live: true,
           },
           hooks: {
             draw: [
@@ -781,6 +855,30 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
 
                 // Restore context (removes clipping)
                 ctx.restore();
+
+                // Draw Y-axis color indicators for categorical series
+                if (categoricalSeries.length > 0 && !hasNumericSeries) {
+                  ctx.save();
+                  const indicatorWidth = 24;  // 拡大: 8px -> 24px
+                  const indicatorHeight = 24; // 拡大: 12px -> 24px
+                  const xPos = 8; // Y軸内で中央寄せ (40px幅の中央付近)
+
+                  for (const [idx, s] of categoricalSeries.entries()) {
+                    const scale = "y";
+                    const yVal = idx;
+                    const y = u.valToPos(yVal, scale, true);
+
+                    // Draw colored rectangle as indicator
+                    ctx.fillStyle = s.color;
+                    ctx.fillRect(xPos, y - indicatorHeight / 2, indicatorWidth, indicatorHeight);
+
+                    // Optional: Add border for visibility
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(xPos, y - indicatorHeight / 2, indicatorWidth, indicatorHeight);
+                  }
+                  ctx.restore();
+                }
               },
             ],
             setSelect: [
@@ -792,63 +890,26 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
                 const max = u.posToVal(u.select.left + u.select.width, "x");
                 u.setScale("x", { min, max });
                 u.setSelect({ left: 0, top: 0, width: 0, height: 0 });
-                onZoom();
-              },
-            ],
-            setCursor: [
-              (u) => {
-                const idx = u.cursor.idx;
-                if (idx === null || idx === undefined) {
-                  setCursorText("");
-                  return;
-                }
-                const time = u.data[0][idx] as number;
-                const timeLabel = new Date(time * 1000).toLocaleString();
-
-                debugLog(`[Cursor] idx=${idx}, time=${time.toFixed(1)}`);
-
-                const values = series
-                  .map((s, i) => {
-                    // Get y value to check if data exists
-                    const yValue = u.data[i + 1][idx] as number | null;
-                    if (yValue === null || yValue === undefined) {
-                      debugLog(`[Cursor] ${s.id}: yValue is null/undefined`);
-                      return `${s.fieldName}=----`;
-                    }
-
-                    // Get label using time->label mapping
-                    const timeLabelMap = timeLabelMapsRef.current.get(s.id);
-                    const stateLabel = timeLabelMap?.get(time);
-
-                    if (!stateLabel) {
-                      debugLog(`[Cursor] ${s.id}: no label found at time ${time.toFixed(1)}`);
-                      return `${s.fieldName}=----`;
-                    }
-
-                    const labelMap = valueMapsRef.current.get(s.id);
-                    if (labelMap && labelMap.size > 0) {
-                      debugLog(`[Cursor] ${s.id}: found label "${stateLabel}"`);
-                      return `${s.fieldName}=${stateLabel}`;
-                    }
-
-                    debugLog(`[Cursor] ${s.id}: no labelMap`);
-                    return `${s.fieldName}=----`;
-                  })
-                  .join(" | ");
-                setCursorText(`${timeLabel} | ${values}`);
+                // Call onZoom to sync the other panel
+                onZoom(min, max);
               },
             ],
           },
         },
-        data,
+        data as uPlot.AlignedData,
         containerRef.current,
       );
       plotRef.current = plot;
     }
     const prevScale = plotRef.current.scales.x;
     const keepScale = !follow && prevScale.min !== null && prevScale.max !== null;
-    plotRef.current.setData(data);
-    if (keepScale) {
+    plotRef.current.setData(data as uPlot.AlignedData);
+    if (manualTimeRange) {
+      // Use manual time range from slider
+      const startSec = manualTimeRange.startMs / 1000;
+      const endSec = manualTimeRange.endMs / 1000;
+      plotRef.current.setScale("x", { min: startSec, max: endSec });
+    } else if (keepScale) {
       plotRef.current.setScale("x", { min: prevScale.min, max: prevScale.max });
     } else if (follow) {
       const endSec = Date.now() / 1000;
@@ -859,6 +920,7 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
     series,
     seriesData,
     follow,
+    manualTimeRange,
     buildPlotDataAndMaps,
     buildAxesAndScales,
     buildSeriesOptions,
@@ -896,12 +958,6 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-200">{title}</div>
         <div className="flex items-center gap-2">
-          <Button
-            minimal
-            small
-            icon={showCommands ? IconNames.EYE_OPEN : IconNames.EYE_OFF}
-            onClick={onToggleShowCommands}
-          />
           <Switch
             checked={showCommands}
             label="Commands"
@@ -918,12 +974,7 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
           />
         </div>
       </div>
-      <div className="flex-1 min-h-[260px]" ref={containerRef} />
-      {cursorText && (
-        <div className="text-[11px] text-slate-400 break-words">
-          {cursorText}
-        </div>
-      )}
+      <div className="flex-1 min-h-[260px] relative" ref={containerRef}></div>
       <div className="flex flex-col gap-1 text-xs text-slate-300">
         {series.length === 0 && <span>No series selected.</span>}
         {series.map((s) => (
@@ -1030,6 +1081,14 @@ export const ChartsView: React.FC = () => {
   const [rangeMinutes, setRangeMinutes] = useState<number>(1);
   const [follow, setFollow] = useState<boolean>(true);
   const [timeRangeMs, setTimeRangeMs] = useState<{ min: number; max: number } | null>(null);
+
+  // Time slider state for manual time range selection
+  const [useTimeSlider, setUseTimeSlider] = useState<boolean>(false);
+  const [sliderStartMs, setSliderStartMs] = useState<number>(0);
+  const [sliderEndMs, setSliderEndMs] = useState<number>(0);
+
+  // Track current zoom range (from drag zoom)
+  const [zoomedRange, setZoomedRange] = useState<{ startMs: number; endMs: number } | null>(null);
 
   // Initialize Panel Series from localStorage
   const savedPanelState = getPanelSeriesState();
@@ -1276,15 +1335,25 @@ export const ChartsView: React.FC = () => {
 
   const isPlaybackMode = selectedSessionId !== "active";
 
-  const handleZoom = useCallback(() => {
+  // Initialize slider values when time range is loaded
+  useEffect(() => {
+    if (timeRangeMs) {
+      setSliderStartMs(timeRangeMs.min);
+      setSliderEndMs(timeRangeMs.max);
+    }
+  }, [timeRangeMs]);
+
+  const handleZoom = useCallback((startSec: number, endSec: number) => {
     setFollow(false);
+    // Save zoom range for data re-fetching
+    const startMs = Math.floor(startSec * 1000);
+    const endMs = Math.floor(endSec * 1000);
+    setZoomedRange({ startMs, endMs });
   }, []);
 
   const handleResetZoom = useCallback(() => {
     setFollow(true);
-    if (plotRef.current) {
-      plotRef.current.setScale("x", { min: null, max: null });
-    }
+    setZoomedRange(null);
   }, []);
 
   useEffect(() => {
@@ -1299,7 +1368,15 @@ export const ChartsView: React.FC = () => {
       let endMs: number;
       let startMs: number;
 
-      if (timeRangeMs) {
+      if (useTimeSlider && timeRangeMs) {
+        // Use slider values for manual time selection
+        startMs = sliderStartMs;
+        endMs = sliderEndMs;
+      } else if (zoomedRange) {
+        // Use zoomed range from drag zoom
+        startMs = zoomedRange.startMs;
+        endMs = zoomedRange.endMs;
+      } else if (timeRangeMs) {
         // Use database time range for past recordings
         startMs = timeRangeMs.min;
         endMs = timeRangeMs.max;
@@ -1312,20 +1389,30 @@ export const ChartsView: React.FC = () => {
       const nextSeriesData = new Map<string, TelemetrySample[]>();
       const sessionId =
         selectedSessionId === "active" ? undefined : selectedSessionId;
+
+      // Calculate max_points based on time range for dynamic sampling
+      const queryTimeRangeMs = endMs - startMs;
+      const maxPoints = calculateMaxPoints(queryTimeRangeMs);
+      console.log(`[DEBUG] Time range: ${(queryTimeRangeMs / 1000 / 60).toFixed(1)} min, max_points: ${maxPoints}`);
+
       for (const series of activeSeries) {
+        const queryFieldName = convertFieldNameForQuery(series.fieldName, series.isRaw);
+        console.log(`[DEBUG] Query params: tmiv_name=${series.tmivName}, field_name=${queryFieldName} (original: ${series.fieldName}), is_raw=${series.isRaw}`);
         const params = buildQueryParams({
           tmiv_name: series.tmivName,
-          field_name: series.fieldName,
+          field_name: queryFieldName,
           is_raw: series.isRaw,
           start_ms: startMs,
           end_ms: endMs,
-          max_points: 2000,
+          max_points: maxPoints,
           session_id: sessionId,
         });
+        console.log(`[DEBUG] Full URL: ${baseUrl}/api/telemetry/query?${params}`);
         try {
           const resp = await fetchJson<TelemetryQueryResponse>(
             `${baseUrl}/api/telemetry/query?${params}`,
           );
+          console.log(`[DEBUG] Response for ${series.id}: ${resp.samples?.length ?? 0} samples`);
           nextSeriesData.set(series.id, resp.samples ?? []);
         } catch (e) {
           console.error(e);
@@ -1336,7 +1423,7 @@ export const ChartsView: React.FC = () => {
         const commandParams = buildQueryParams({
           start_ms: startMs,
           end_ms: endMs,
-          max_points: 500,
+          max_points: 10000,  // Increased from 500 to show more commands
           session_id: sessionId,
         });
         const commandResp = await fetchJson<CommandQueryResponse>(
@@ -1363,6 +1450,12 @@ export const ChartsView: React.FC = () => {
     rangeMinutes,
     selectedSessionId,
     timeRangeMs,
+    useTimeSlider,
+    sliderStartMs,
+    sliderEndMs,
+    zoomedRange,
+    // Note: tempSlider values are NOT in deps to avoid re-fetching while dragging
+    // sliderStartMs/EndMs and zoomedRange trigger refresh
   ]);
 
   useEffect(() => {
@@ -1570,6 +1663,52 @@ export const ChartsView: React.FC = () => {
               label="Follow latest"
               onChange={() => setFollow((prev) => !prev)}
             />
+            {isPlaybackMode && timeRangeMs && (
+              <>
+                <Switch
+                  checked={useTimeSlider}
+                  label="Manual time selection"
+                  onChange={() => setUseTimeSlider((prev) => !prev)}
+                />
+                {useTimeSlider && (
+                  <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-800 rounded">
+                    <div className="text-xs text-slate-400">Start time</div>
+                    <input
+                      type="range"
+                      min={timeRangeMs.min}
+                      max={timeRangeMs.max}
+                      value={sliderStartMs}
+                      onChange={(e) => setSliderStartMs(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="text-xs text-slate-300">
+                      {new Date(sliderStartMs).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-2">End time</div>
+                    <input
+                      type="range"
+                      min={timeRangeMs.min}
+                      max={timeRangeMs.max}
+                      value={sliderEndMs}
+                      onChange={(e) => setSliderEndMs(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="text-xs text-slate-300">
+                      {new Date(sliderEndMs).toLocaleString()}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSliderStartMs(timeRangeMs.min);
+                        setSliderEndMs(timeRangeMs.max);
+                      }}
+                      className="mt-2 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                    >
+                      Reset to full range
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
             </>
           )}
@@ -1583,6 +1722,13 @@ export const ChartsView: React.FC = () => {
             showCommands={showCommandsA}
             follow={follow}
             rangeMinutes={rangeMinutes}
+            manualTimeRange={
+              useTimeSlider
+                ? { startMs: sliderStartMs, endMs: sliderEndMs }
+                : zoomedRange
+                ? { startMs: zoomedRange.startMs, endMs: zoomedRange.endMs }
+                : null
+            }
             onToggleShowCommands={() => setShowCommandsA((prev) => !prev)}
             onRemoveSeries={(id) => removeSeries("A", id)}
             onToggleSeriesMode={(id) => toggleSeriesMode("A", id)}
@@ -1598,6 +1744,13 @@ export const ChartsView: React.FC = () => {
             showCommands={showCommandsB}
             follow={follow}
             rangeMinutes={rangeMinutes}
+            manualTimeRange={
+              useTimeSlider
+                ? { startMs: sliderStartMs, endMs: sliderEndMs }
+                : zoomedRange
+                ? { startMs: zoomedRange.startMs, endMs: zoomedRange.endMs }
+                : null
+            }
             onToggleShowCommands={() => setShowCommandsB((prev) => !prev)}
             onRemoveSeries={(id) => removeSeries("B", id)}
             onToggleSeriesMode={(id) => toggleSeriesMode("B", id)}

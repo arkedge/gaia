@@ -23,3 +23,7 @@ tonic-web = "0.11"
 
 [dependencies.gaia-stub]
 workspace = true
+
+[[bin]]
+name = "import-csv"
+path = "src/bin/import-csv.rs"

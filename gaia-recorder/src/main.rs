@@ -332,12 +332,46 @@ async fn query_telemetry(
     axum::extract::State(state): axum::extract::State<Arc<RwLock<RecorderState>>>,
     Query(query): Query<TelemetryQuery>,
 ) -> Result<Json<TelemetryQueryResponse>, axum::http::StatusCode> {
+    // Log the query for debugging
+    tracing::debug!(
+        "Telemetry query: session_id={:?}, tmiv={}, field={}, is_raw={}, start={}, end={}, max_points={:?}",
+        query.session_id, query.tmiv_name, query.field_name, query.is_raw, query.start_ms, query.end_ms, query.max_points
+    );
+
     let db_path = resolve_session_path(&state, query.session_id.clone())
         .await
         .unwrap_or_default();
     if db_path.is_empty() {
+        tracing::warn!("No database path found for session_id={:?}", query.session_id);
         return Ok(Json(TelemetryQueryResponse { samples: vec![] }));
     }
+
+    // In playback mode, adjust time range to match actual data
+    let (start_ms, end_ms) = {
+        let guard = state.read().await;
+        if guard.playback_mode {
+            let db_path_clone = db_path.clone();
+            let (db_start, db_end) = tokio::task::spawn_blocking(move || {
+                get_time_range_from_db(&db_path_clone)
+            })
+            .await
+            .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            .and_then(|res| res.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            if let (Some(db_start), Some(db_end)) = (db_start, db_end) {
+                tracing::info!(
+                    "Playback mode: adjusting query time range from [{}, {}] to database range [{}, {}]",
+                    query.start_ms, query.end_ms, db_start, db_end
+                );
+                (db_start, db_end)
+            } else {
+                (query.start_ms, query.end_ms)
+            }
+        } else {
+            (query.start_ms, query.end_ms)
+        }
+    };
+
     let time_axis = query.time_axis.unwrap_or_else(|| "primary".to_string());
     let samples = tokio::task::spawn_blocking(move || {
         query_telemetry_from_db(
@@ -345,8 +379,8 @@ async fn query_telemetry(
             &query.tmiv_name,
             &query.field_name,
             query.is_raw,
-            query.start_ms,
-            query.end_ms,
+            start_ms,
+            end_ms,
             query.max_points.unwrap_or(2000),
             &time_axis,
         )
@@ -355,6 +389,7 @@ async fn query_telemetry(
     .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
     .and_then(|res| res.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
 
+    tracing::debug!("Telemetry query returned {} samples", samples.len());
     Ok(Json(TelemetryQueryResponse { samples }))
 }
 
@@ -373,7 +408,7 @@ async fn query_commands(
             &db_path,
             query.start_ms,
             query.end_ms,
-            query.max_points.unwrap_or(500),
+            query.max_points.unwrap_or(10000),  // Increased default limit
         )
     })
     .await
