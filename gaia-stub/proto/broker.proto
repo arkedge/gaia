@@ -3,6 +3,7 @@ syntax = "proto3";
 package broker;
 
 import "tco_tmiv.proto";
+import "google/protobuf/empty.proto";
 
 service Broker {
   rpc PostCommand(PostCommandRequest) returns (PostCommandResponse);
@@ -11,6 +12,13 @@ service Broker {
 
   rpc OpenCommandStream(stream CommandStreamRequest) returns (stream CommandStreamResponse);
   rpc PostTelemetry(PostTelemetryRequest) returns (PostTelemetryResponse);
+
+  rpc PostSetVR(PostSetVRRequest) returns (PostSetVRResponse);
+  rpc PostUnlock(PostUnlockRequest) returns (PostUnlockResponse);
+  rpc PostADCommand(PostADCommandRequest) returns (PostADCommandResponse);
+  rpc ClearAD(ClearADRequest) returns (ClearADResponse);
+  rpc SubscribeFopFrameEvents(SubscribeFopFrameEventsRequest) returns (stream FopFrameEvent);
+  rpc GetFopStatus(GetFopStatusRequest) returns (GetFopStatusResponse);
 }
 
 message PostCommandRequest {
@@ -51,4 +59,69 @@ message GetLastReceivedTelemetryRequest {
 
 message GetLastReceivedTelemetryResponse {
   tco_tmiv.Tmiv tmiv = 1;
+}
+
+message PostSetVRRequest {
+  uint32 vr = 1;
+}
+
+message PostSetVRResponse {
+}
+
+message PostUnlockRequest { }
+
+message PostUnlockResponse { }
+
+message PostADCommandRequest {
+    tco_tmiv.Tco tco = 1;
+}
+
+message PostADCommandResponse {
+    bool success = 1;
+    uint64 frame_id = 2;
+}
+
+
+message SubscribeFopFrameEventsRequest {
+}
+
+message FopFrameEvent {
+    uint64 frame_id = 1;
+    enum EventType {
+        TRANSMIT = 0;
+        ACKNOWLEDGED = 1;
+        RETRANSMIT = 2;
+        CANCEL = 3;
+    };
+    EventType event_type = 2;
+}
+
+message ClearADRequest { }
+
+message ClearADResponse { }
+
+message GetFopStatusRequest {}
+
+
+message FopState {
+  message RetransmitState {
+    uint64 retransmit_count = 1;
+  }
+  oneof state {
+    google.protobuf.Empty initial = 1;
+    google.protobuf.Empty active = 2;
+    RetransmitState retransmit = 3;
+  }
+}
+
+message GetFopStatusResponse {
+  bool received_clcw = 1;
+  bool lockout_flag = 2;
+  bool wait_flag = 3;
+  bool retransmit_flag = 4;
+  uint32 next_expected_sequence_number = 5;
+
+  FopState fop_state = 10;
+  bool has_next_sequence_number = 11;
+  uint32 next_sequence_number = 12;
 }
