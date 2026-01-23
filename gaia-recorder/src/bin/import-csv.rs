@@ -201,9 +201,9 @@ fn import_telemetry_csv(conn: &Connection, csv_path: &Path) -> Result<()> {
                 AS TIMESTAMP)) AS BIGINT) as time_received_ms,
                 CASE
                     WHEN \"{}\"::VARCHAR = '' THEN NULL
-                    WHEN TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NOT NULL THEN 'int'
-                    WHEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NOT NULL THEN 'num'
-                    ELSE 'text'
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NOT NULL THEN 'integer'
+                    WHEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NOT NULL THEN 'double'
+                    ELSE 'string'
                 END as value_type,
                 CASE
                     WHEN TRY_CAST(\"{}\"::VARCHAR AS DOUBLE) IS NOT NULL AND TRY_CAST(\"{}\"::VARCHAR AS BIGINT) IS NULL

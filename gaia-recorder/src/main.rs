@@ -1,8 +1,11 @@
+mod domain;
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use domain::ValueType;
 use axum::{
     error_handling::HandleErrorLayer,
     extract::Query,
@@ -662,28 +665,28 @@ fn insert_tmiv_field(
     let mut value_int: Option<i64> = None;
     let mut value_text: Option<String> = None;
     let mut value_bytes: Option<Vec<u8>> = None;
-    let value_type: &str;
+    let value_type: ValueType;
 
     match field.value.as_ref() {
         Some(tco_tmiv::tmiv_field::Value::Integer(i)) => {
-            value_type = "integer";
+            value_type = ValueType::Integer;
             value_int = Some(*i);
             value_num = Some(*i as f64);
         }
         Some(tco_tmiv::tmiv_field::Value::Double(d)) => {
-            value_type = "double";
+            value_type = ValueType::Double;
             value_num = Some(*d);
         }
         Some(tco_tmiv::tmiv_field::Value::Enum(e)) => {
-            value_type = "enum";
+            value_type = ValueType::Enum;
             value_text = Some(e.clone());
         }
         Some(tco_tmiv::tmiv_field::Value::String(s)) => {
-            value_type = "string";
+            value_type = ValueType::String;
             value_text = Some(s.clone());
         }
         Some(tco_tmiv::tmiv_field::Value::Bytes(b)) => {
-            value_type = "bytes";
+            value_type = ValueType::Bytes;
             value_bytes = Some(b.clone());
             if b.len() <= 8 {
                 let mut buf = [0u8; 8];
@@ -694,7 +697,7 @@ fn insert_tmiv_field(
             }
         }
         None => {
-            value_type = "unknown";
+            value_type = ValueType::Unknown;
         }
     }
 
@@ -707,7 +710,7 @@ fn insert_tmiv_field(
             is_raw,
             time_primary_ms,
             time_received_ms,
-            value_type,
+            value_type.to_db_string(),
             value_num,
             value_int,
             value_text,
@@ -770,7 +773,9 @@ fn query_telemetry_from_db(
         params![tmiv_name, field_name, start_ms, end_ms],
         |row| {
             let time_ms: i64 = row.get(0)?;
-            let value_type: String = row.get(1)?;
+            let value_type_raw: String = row.get(1)?;
+            // Normalize value_type using ValueType enum (supports legacy formats)
+            let value_type = ValueType::from_db_string(&value_type_raw).to_db_string().to_string();
             let value_num: Option<f64> = row.get(2)?;
             let value_int: Option<i64> = row.get(3)?;
             let value_text: Option<String> = row.get(4)?;
