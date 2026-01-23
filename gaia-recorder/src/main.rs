@@ -1,3 +1,4 @@
+mod db;
 mod domain;
 mod transform;
 
@@ -148,18 +149,8 @@ struct TelemetryQuery {
 }
 
 #[derive(Debug, Serialize)]
-struct TelemetrySample {
-    time_ms: i64,
-    value_type: String,
-    value_num: Option<f64>,
-    value_int: Option<i64>,
-    value_text: Option<String>,
-    value_bytes_hex: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
 struct TelemetryQueryResponse {
-    samples: Vec<TelemetrySample>,
+    samples: Vec<db::TelemetrySample>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -182,15 +173,8 @@ struct TimeRangeResponse {
 }
 
 #[derive(Debug, Serialize)]
-struct CommandLogItem {
-    time_ms: i64,
-    command_name: String,
-    params_json: String,
-}
-
-#[derive(Debug, Serialize)]
 struct CommandQueryResponse {
-    commands: Vec<CommandLogItem>,
+    commands: Vec<db::CommandLogItem>,
 }
 
 #[derive(Debug, Serialize)]
@@ -357,7 +341,7 @@ async fn query_telemetry(
         if guard.playback_mode {
             let db_path_clone = db_path.clone();
             let (db_start, db_end) = tokio::task::spawn_blocking(move || {
-                get_time_range_from_db(&db_path_clone)
+                db::query_time_range(&db_path_clone)
             })
             .await
             .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -382,7 +366,7 @@ async fn query_telemetry(
     let field_name = query.field_name.clone();
     let is_raw = query.is_raw;
     let samples = tokio::task::spawn_blocking(move || {
-        query_telemetry_from_db(
+        db::query_telemetry(
             &db_path,
             &tmiv_name,
             &field_name,
@@ -412,7 +396,7 @@ async fn query_commands(
         return Ok(Json(CommandQueryResponse { commands: vec![] }));
     }
     let commands = tokio::task::spawn_blocking(move || {
-        query_commands_from_db(
+        db::query_commands(
             &db_path,
             query.start_ms,
             query.end_ms,
@@ -440,7 +424,7 @@ async fn get_time_range(
         }));
     }
     let (min_time_ms, max_time_ms) = tokio::task::spawn_blocking(move || {
-        get_time_range_from_db(&db_path)
+        db::query_time_range(&db_path)
     })
     .await
     .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -501,7 +485,7 @@ async fn start_new_session(
 
     tokio::task::spawn_blocking({
         let db_path = db_path.clone();
-        move || init_db(&db_path)
+        move || db::init_database(&db_path)
     })
     .await??;
 
@@ -519,41 +503,6 @@ async fn start_new_session(
     Ok(session)
 }
 
-fn init_db(path: &Path) -> Result<()> {
-    let conn = Connection::open(path)?;
-
-    // DuckDB automatically uses compression; optimized data types reduce storage
-    conn.execute_batch(
-        "
-        CREATE SEQUENCE IF NOT EXISTS seq_telemetry_samples START 1;
-        CREATE TABLE IF NOT EXISTS telemetry_samples (
-            id INTEGER PRIMARY KEY DEFAULT nextval('seq_telemetry_samples'),
-            tmiv_name VARCHAR NOT NULL,
-            field_name VARCHAR NOT NULL,
-            is_raw TINYINT NOT NULL,
-            time_primary_ms BIGINT NOT NULL,
-            time_received_ms BIGINT NOT NULL,
-            value_type VARCHAR(20) NOT NULL,
-            value_num DOUBLE,
-            value_int BIGINT,
-            value_text VARCHAR,
-            value_bytes BLOB
-        );
-        CREATE INDEX IF NOT EXISTS idx_telemetry_query
-            ON telemetry_samples (tmiv_name, field_name, is_raw, time_primary_ms);
-
-        CREATE SEQUENCE IF NOT EXISTS seq_command_logs START 1;
-        CREATE TABLE IF NOT EXISTS command_logs (
-            id INTEGER PRIMARY KEY DEFAULT nextval('seq_command_logs'),
-            time_ms BIGINT NOT NULL,
-            command_name VARCHAR NOT NULL,
-            params_json VARCHAR NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_command_time ON command_logs (time_ms);
-        ",
-    )?;
-    Ok(())
-}
 
 async fn resolve_session_path(
     state: &Arc<RwLock<RecorderState>>,
@@ -592,15 +541,12 @@ async fn insert_command(
         .map(|ts| ts.seconds * 1000 + (ts.nanos as i64 / 1_000_000))
         .unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
 
-    let params_json = build_params_json(tco);
+    let params_json = db::build_params_json(tco);
     let command_name = tco.name.clone();
 
     tokio::task::spawn_blocking(move || {
         let conn = Connection::open(session.db_path)?;
-        conn.execute(
-            "INSERT INTO command_logs (time_ms, command_name, params_json) VALUES (?1, ?2, ?3)",
-            params![time_ms, command_name, params_json],
-        )?;
+        db::insert_command_log(&conn, time_ms, &command_name, &params_json)?;
         Ok::<_, anyhow::Error>(())
     })
     .await??;
@@ -631,7 +577,7 @@ async fn insert_tmiv(state: &Arc<RwLock<RecorderState>>, tmiv: &Tmiv) -> Result<
         let mut conn = Connection::open(session.db_path)?;
         let tx = conn.transaction()?;
         for field in fields.iter() {
-            insert_tmiv_field(
+            db::insert_telemetry_sample(
                 &tx,
                 &tmiv_name,
                 field,
@@ -647,271 +593,6 @@ async fn insert_tmiv(state: &Arc<RwLock<RecorderState>>, tmiv: &Tmiv) -> Result<
     Ok(())
 }
 
-fn insert_tmiv_field(
-    tx: &duckdb::Transaction<'_>,
-    tmiv_name: &str,
-    field: &TmivField,
-    time_primary_ms: i64,
-    time_received_ms: i64,
-) -> Result<()> {
-    // Store field_name with :raw or :conv suffix (same format as CSV import)
-    let field_name_parsed = FieldName::from_grpc(&field.name);
-    let field_name = field_name_parsed.to_db_format();
-    let is_raw = field_name_parsed.is_raw_int();
-
-    let mut value_num: Option<f64> = None;
-    let mut value_int: Option<i64> = None;
-    let mut value_text: Option<String> = None;
-    let mut value_bytes: Option<Vec<u8>> = None;
-    let value_type: ValueType;
-
-    match field.value.as_ref() {
-        Some(tco_tmiv::tmiv_field::Value::Integer(i)) => {
-            value_type = ValueType::Integer;
-            value_int = Some(*i);
-            value_num = Some(*i as f64);
-        }
-        Some(tco_tmiv::tmiv_field::Value::Double(d)) => {
-            value_type = ValueType::Double;
-            value_num = Some(*d);
-        }
-        Some(tco_tmiv::tmiv_field::Value::Enum(e)) => {
-            value_type = ValueType::Enum;
-            value_text = Some(e.clone());
-        }
-        Some(tco_tmiv::tmiv_field::Value::String(s)) => {
-            value_type = ValueType::String;
-            value_text = Some(s.clone());
-        }
-        Some(tco_tmiv::tmiv_field::Value::Bytes(b)) => {
-            value_type = ValueType::Bytes;
-            value_bytes = Some(b.clone());
-            if b.len() <= 8 {
-                let mut buf = [0u8; 8];
-                buf[8 - b.len()..].copy_from_slice(b);
-                let raw = u64::from_be_bytes(buf) as i64;
-                value_int = Some(raw);
-                value_num = Some(raw as f64);
-            }
-        }
-        None => {
-            value_type = ValueType::Unknown;
-        }
-    }
-
-    tx.execute(
-        "INSERT INTO telemetry_samples (tmiv_name, field_name, is_raw, time_primary_ms, time_received_ms, value_type, value_num, value_int, value_text, value_bytes)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![
-            tmiv_name,
-            field_name,
-            is_raw,
-            time_primary_ms,
-            time_received_ms,
-            value_type.to_db_string(),
-            value_num,
-            value_int,
-            value_text,
-            value_bytes,
-        ],
-    )?;
-
-    Ok(())
-}
-
-fn build_params_json(tco: &Tco) -> String {
-    let params: Vec<serde_json::Value> = tco
-        .params
-        .iter()
-        .map(|param| {
-            let value = match param.value.as_ref() {
-                Some(tco_param::Value::Integer(v)) => serde_json::json!({"type": "integer", "value": v}),
-                Some(tco_param::Value::Double(v)) => serde_json::json!({"type": "double", "value": v}),
-                Some(tco_param::Value::Bytes(v)) => {
-                    let hex = v.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-                    serde_json::json!({"type": "bytes", "value": hex})
-                }
-                None => serde_json::json!({"type": "none"}),
-            };
-            serde_json::json!({"name": param.name, "value": value})
-        })
-        .collect();
-
-    serde_json::json!({"name": tco.name, "params": params}).to_string()
-}
-
-fn query_telemetry_from_db(
-    db_path: &str,
-    tmiv_name: &str,
-    field_name: &str,
-    _is_raw: bool,
-    start_ms: i64,
-    end_ms: i64,
-    max_points: usize,
-    time_axis: &str,
-) -> Result<Vec<TelemetrySample>> {
-    // Check if database file exists to prevent creating empty files
-    if !std::path::Path::new(db_path).exists() {
-        return Ok(Vec::new());
-    }
-    let conn = Connection::open(db_path)?;
-    let time_column = if time_axis == "received" {
-        "time_received_ms"
-    } else {
-        "time_primary_ms"
-    };
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {time_column}, value_type, value_num, value_int, value_text, value_bytes
-         FROM telemetry_samples
-         WHERE tmiv_name = ?1 AND field_name = ?2 AND {time_column} BETWEEN ?3 AND ?4
-         ORDER BY {time_column} ASC"
-    ))?;
-
-    let rows = stmt.query_map(
-        params![tmiv_name, field_name, start_ms, end_ms],
-        |row| {
-            let time_ms: i64 = row.get(0)?;
-            let value_type_raw: String = row.get(1)?;
-            // Normalize value_type using ValueType enum (supports legacy formats)
-            let value_type = ValueType::from_db_string(&value_type_raw).to_db_string().to_string();
-            let value_num: Option<f64> = row.get(2)?;
-            let value_int: Option<i64> = row.get(3)?;
-            let value_text: Option<String> = row.get(4)?;
-            let value_bytes: Option<Vec<u8>> = row.get(5)?;
-            let value_bytes_hex = value_bytes.as_ref().map(|bytes| {
-                bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>()
-            });
-            Ok(TelemetrySample {
-                time_ms,
-                value_type,
-                value_num,
-                value_int,
-                value_text,
-                value_bytes_hex,
-            })
-        },
-    )?;
-
-    let mut samples: Vec<TelemetrySample> = rows.collect::<std::result::Result<_, _>>()?;
-    if samples.len() > max_points && max_points > 0 {
-        samples = downsample_samples(samples, max_points);
-    }
-    Ok(samples)
-}
-
-fn downsample_samples(samples: Vec<TelemetrySample>, max_points: usize) -> Vec<TelemetrySample> {
-    let has_numeric = samples.iter().any(|sample| {
-        sample.value_num.is_some() || sample.value_int.is_some()
-    });
-    if !has_numeric {
-        return downsample_stride(samples, max_points);
-    }
-    downsample_min_max_avg(samples, max_points)
-}
-
-fn downsample_stride(samples: Vec<TelemetrySample>, max_points: usize) -> Vec<TelemetrySample> {
-    if samples.len() <= max_points {
-        return samples;
-    }
-    let step = (samples.len() as f64 / max_points as f64).ceil() as usize;
-    samples
-        .into_iter()
-        .step_by(step.max(1))
-        .take(max_points)
-        .collect()
-}
-
-fn downsample_min_max_avg(samples: Vec<TelemetrySample>, max_points: usize) -> Vec<TelemetrySample> {
-    if samples.len() <= max_points {
-        return samples;
-    }
-    let buckets = max_points / 3;
-    if buckets == 0 {
-        return samples;
-    }
-    let bucket_size = (samples.len() as f64 / buckets as f64).ceil() as usize;
-    let mut downsampled = Vec::with_capacity(max_points);
-
-    for chunk in samples.chunks(bucket_size) {
-        let mut min: Option<f64> = None;
-        let mut max: Option<f64> = None;
-        let mut sum = 0.0;
-        let mut count = 0.0;
-        for sample in chunk.iter() {
-            let value = sample.value_num.or(sample.value_int.map(|v| v as f64));
-            let Some(value) = value else { continue; };
-            sum += value;
-            count += 1.0;
-            min = Some(min.map_or(value, |m| m.min(value)));
-            max = Some(max.map_or(value, |m| m.max(value)));
-        }
-        if count == 0.0 {
-            continue;
-        }
-        let avg = sum / count;
-        let time_ms = chunk[chunk.len() / 2].time_ms;
-        let make_sample = |value: f64| TelemetrySample {
-            time_ms,
-            value_type: "double".to_string(),
-            value_num: Some(value),
-            value_int: None,
-            value_text: None,
-            value_bytes_hex: None,
-        };
-        if let Some(min) = min {
-            downsampled.push(make_sample(min));
-        }
-        if let Some(max) = max {
-            downsampled.push(make_sample(max));
-        }
-        downsampled.push(make_sample(avg));
-        if downsampled.len() >= max_points {
-            break;
-        }
-    }
-
-    downsampled.truncate(max_points);
-    downsampled
-}
-
-fn query_commands_from_db(
-    db_path: &str,
-    start_ms: i64,
-    end_ms: i64,
-    max_points: usize,
-) -> Result<Vec<CommandLogItem>> {
-    let conn = Connection::open(db_path)?;
-    let mut stmt = conn.prepare(
-        "SELECT time_ms, command_name, params_json
-         FROM command_logs
-         WHERE time_ms BETWEEN ?1 AND ?2
-         ORDER BY time_ms ASC
-         LIMIT ?3",
-    )?;
-
-    let rows = stmt.query_map(params![start_ms, end_ms, max_points as i64], |row| {
-        Ok(CommandLogItem {
-            time_ms: row.get(0)?,
-            command_name: row.get(1)?,
-            params_json: row.get(2)?,
-        })
-    })?;
-
-    Ok(rows.collect::<std::result::Result<_, _>>()?)
-}
-
-fn get_time_range_from_db(db_path: &str) -> Result<(Option<i64>, Option<i64>)> {
-    let conn = Connection::open(db_path)?;
-    let mut stmt = conn.prepare(
-        "SELECT MIN(time_primary_ms), MAX(time_primary_ms) FROM telemetry_samples",
-    )?;
-
-    let result = stmt.query_row([], |row| {
-        Ok((row.get(0).ok(), row.get(1).ok()))
-    })?;
-
-    Ok(result)
-}
 
 fn list_recording_files(data_dir: &Path) -> Result<Vec<RecordingListItem>> {
     let mut recordings = Vec::new();
