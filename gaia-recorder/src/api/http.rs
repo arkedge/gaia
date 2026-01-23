@@ -11,15 +11,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::db;
-
-#[derive(Clone, Debug, Serialize)]
-pub struct SessionInfo {
-    pub session_id: String,
-    pub suffix: String,
-    pub started_at_ms: i64,
-    pub db_path: String,
-    pub active: bool,
-}
+use crate::domain::{RecordingInfo, Session, SessionInfo, SessionState};
 
 #[derive(Clone, Debug)]
 pub struct RecorderState {
@@ -37,6 +29,16 @@ impl RecorderState {
             playback_mode,
             schema_json,
         }
+    }
+}
+
+impl SessionState for RecorderState {
+    fn data_dir(&self) -> &Path {
+        &self.data_dir
+    }
+
+    fn current_session(&self) -> Option<SessionInfo> {
+        self.session.clone()
     }
 }
 
@@ -102,16 +104,8 @@ struct CommandQueryResponse {
 }
 
 #[derive(Debug, Serialize)]
-struct RecordingListItem {
-    session_id: String,
-    suffix: String,
-    started_at_ms: Option<i64>,
-    db_path: String,
-}
-
-#[derive(Debug, Serialize)]
 struct RecordingListResponse {
-    recordings: Vec<RecordingListItem>,
+    recordings: Vec<RecordingInfo>,
 }
 
 pub fn create_router(state: Arc<RwLock<RecorderState>>) -> Router {
@@ -132,16 +126,24 @@ async fn start_recording(
     Json(body): Json<StartRecordingRequest>,
 ) -> Result<Json<StartRecordingResponse>, axum::http::StatusCode> {
     // Check if playback mode is enabled
-    {
+    let data_dir = {
         let guard = state.read().await;
         if guard.playback_mode {
             return Err(axum::http::StatusCode::FORBIDDEN);
         }
-    }
-    let suffix = body.suffix.unwrap_or_default();
-    let session = start_new_session(&state, Some(suffix))
+        guard.data_dir.clone()
+    };
+
+    let session = Session::create(&data_dir, body.suffix)
         .await
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Store session in state
+    {
+        let mut guard = state.write().await;
+        guard.session = Some(session.clone());
+    }
+
     Ok(Json(StartRecordingResponse { session }))
 }
 
@@ -179,7 +181,7 @@ async fn query_telemetry(
         query.session_id, query.tmiv_name, query.field_name, query.is_raw, query.start_ms, query.end_ms, query.max_points
     );
 
-    let db_path = resolve_session_path(&state, query.session_id.clone())
+    let db_path = crate::domain::session::resolve_session_path_from_state(&state, query.session_id.clone())
         .await
         .unwrap_or_default();
     if db_path.is_empty() {
@@ -241,7 +243,7 @@ async fn query_commands(
     axum::extract::State(state): axum::extract::State<Arc<RwLock<RecorderState>>>,
     Query(query): Query<CommandQuery>,
 ) -> Result<Json<CommandQueryResponse>, axum::http::StatusCode> {
-    let db_path = resolve_session_path(&state, query.session_id.clone())
+    let db_path = crate::domain::session::resolve_session_path_from_state(&state, query.session_id.clone())
         .await
         .unwrap_or_default();
     if db_path.is_empty() {
@@ -266,7 +268,7 @@ async fn get_time_range(
     axum::extract::State(state): axum::extract::State<Arc<RwLock<RecorderState>>>,
     Query(query): Query<TimeRangeQuery>,
 ) -> Result<Json<TimeRangeResponse>, axum::http::StatusCode> {
-    let db_path = resolve_session_path(&state, query.session_id.clone())
+    let db_path = crate::domain::session::resolve_session_path_from_state(&state, query.session_id.clone())
         .await
         .unwrap_or_default();
     if db_path.is_empty() {
@@ -309,115 +311,10 @@ async fn list_recordings(
         let guard = state.read().await;
         guard.data_dir.clone()
     };
-    let recordings = tokio::task::spawn_blocking(move || list_recording_files(&data_dir))
+    let recordings = tokio::task::spawn_blocking(move || Session::list_all(&data_dir))
         .await
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
         .and_then(|res| res.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
     Ok(Json(RecordingListResponse { recordings }))
 }
 
-async fn start_new_session(
-    state: &Arc<RwLock<RecorderState>>,
-    suffix: Option<String>,
-) -> Result<SessionInfo> {
-    let suffix = suffix.unwrap_or_default();
-    let started_at = chrono::Utc::now();
-    let session_id = started_at.format("%Y%m%d_%H%M%S").to_string();
-    let file_name = if suffix.is_empty() {
-        format!("recording_{session_id}.duckdb")
-    } else {
-        format!("recording_{session_id}_{suffix}.duckdb")
-    };
-    let db_path = {
-        let guard = state.read().await;
-        guard.data_dir.join(file_name)
-    };
-
-    let db_path_string = db_path.to_string_lossy().to_string();
-
-    tokio::task::spawn_blocking({
-        let db_path = db_path.clone();
-        move || db::init_database(&db_path)
-    })
-    .await??;
-
-    let session = SessionInfo {
-        session_id,
-        suffix,
-        started_at_ms: started_at.timestamp_millis(),
-        db_path: db_path_string,
-        active: true,
-    };
-
-    let mut guard = state.write().await;
-    guard.session = Some(session.clone());
-
-    Ok(session)
-}
-
-async fn resolve_session_path(
-    state: &Arc<RwLock<RecorderState>>,
-    session_id: Option<String>,
-) -> Option<String> {
-    if let Some(session_id) = session_id {
-        let data_dir = {
-            let guard = state.read().await;
-            guard.data_dir.clone()
-        };
-        let list = tokio::task::spawn_blocking(move || list_recording_files(&data_dir))
-            .await
-            .ok()
-            .and_then(|res| res.ok())?;
-        let item = list.into_iter().find(|item| item.session_id == session_id)?;
-        return Some(item.db_path);
-    }
-    let guard = state.read().await;
-    guard.session.as_ref().map(|session| session.db_path.clone())
-}
-
-fn list_recording_files(data_dir: &Path) -> Result<Vec<RecordingListItem>> {
-    let mut recordings = Vec::new();
-    for entry in std::fs::read_dir(data_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if !file_name.starts_with("recording_") || !file_name.ends_with(".duckdb") {
-            continue;
-        }
-        let trimmed = file_name
-            .trim_start_matches("recording_")
-            .trim_end_matches(".duckdb");
-        // Split into at most 3 parts: YYYYMMDD, HHMMSS, and optional suffix
-        let parts: Vec<&str> = trimmed.splitn(3, '_').collect();
-        let (session_id, suffix) = if parts.len() >= 2 {
-            // We have at least YYYYMMDD_HHMMSS
-            let session_id = format!("{}_{}", parts[0], parts[1]);
-            let suffix = if parts.len() >= 3 {
-                parts[2].to_string()
-            } else {
-                String::new()
-            };
-            (session_id, suffix)
-        } else {
-            // Fallback for unexpected format
-            (trimmed.to_string(), String::new())
-        };
-        let started_at_ms = chrono::NaiveDateTime::parse_from_str(&session_id, "%Y%m%d_%H%M%S")
-            .ok()
-            .map(|dt| {
-                chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-                    .timestamp_millis()
-            });
-        recordings.push(RecordingListItem {
-            session_id,
-            suffix,
-            started_at_ms,
-            db_path: path.to_string_lossy().to_string(),
-        });
-    }
-    recordings.sort_by(|a, b| b.session_id.cmp(&a.session_id));
-    Ok(recordings)
-}

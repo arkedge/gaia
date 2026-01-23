@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::error;
 
-use crate::api::http::{RecorderState, SessionInfo};
+use crate::api::http::RecorderState;
 use crate::db;
 
 #[derive(Clone)]
