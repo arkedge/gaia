@@ -234,9 +234,19 @@ CREATE INDEX idx_command_time ON command_logs (time_ms);
 - REST APIで記録セッションの開始/停止が可能
 - `session_id`で複数セッションをクエリ可能
 
+#### 自動一時セッション
+記録モードで起動すると、gaia-recorderは自動的に一時セッション（`_auto`サフィックス付き）を作成します。この機能により：
+
+- 起動直後からテレメトリをグラフ表示可能
+- フロントエンドのPLAYボタンを押すと、セッションが保存されます
+- PLAYボタンを押さずに終了した場合、一時データベース（`*_auto.duckdb`）は自動削除されます
+- Ctrl+Cによるグレースフルシャットダウンで、一時ファイルのクリーンアップが実行されます
+
+これにより、手動で記録開始する必要なく、即座にデータの可視化が可能になります。
+
 ### 再生モード（`--playback-mode`）
 - 読み取り専用: `/api/recording/start`と`/api/recording/stop`は403を返す
-- 新しいデータベースファイルは作成されない
+- 新しいデータベースファイルは作成されない（一時セッションも作成されません）
 - 既存の記録をクエリ可能
 - 時間範囲クエリは自動的にデータベース境界に調整される
 - オフライン分析に有用
@@ -275,6 +285,46 @@ gaia-recorder \
 ### 環境変数
 全てのCLI引数は環境変数で設定可能：
 - `BIND_ADDR`, `BIND_PORT`, `DATA_DIR`, `PLAYBACK_MODE`, `SCHEMA_FILE`
+
+## セットアップ
+
+### 前提条件
+- Rust (cargo)
+- Node.js v21+ & pnpm
+
+### インストール
+
+#### オプション1: npm/pnpm 経由（推奨）
+プロジェクトルートで以下を実行すると、gaia-recorder と tmtc-c2a を含むすべてのツールがインストールされます：
+
+```bash
+pnpm install
+```
+
+これにより、以下のバイナリが `node_modules/.bin/` にインストールされます：
+- `gaia-recorder` - テレメトリ記録・再生サービス
+- `tmtc-c2a` - 地上局制御ソフトウェア
+- `tlmcmddb-cli` - テレメトリ/コマンドデータベースツール
+- `kble` / `kble-c2a` - KBLE 関連ツール
+
+インストール後、以下のコマンドで起動できます：
+
+```bash
+# レコーダーとtmtc-c2aを同時起動
+pnpm run dev
+
+# レコーダーのみ起動
+pnpm run run:recorder
+
+# 再生モード
+pnpm run playback
+```
+
+#### オプション2: Cargo から直接ビルド
+```bash
+cargo build --release
+# バイナリは target/release/gaia-recorder に生成されます
+```
 
 ## バイナリ
 

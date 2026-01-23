@@ -6,12 +6,12 @@ license = "MPL-2.0"
 
 [dependencies]
 anyhow = "1"
-axum = "0.6"
+axum = { version = "0.6", default-features = false, features = ["http1", "http2", "tokio", "json", "query"] }
 clap = { version = "4", features = ["derive", "env"] }
 chrono = { version = "=0.4.38", default-features = false, features = ["clock"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tonic = { version = "0.11", features = ["transport", "codegen"] }
 tower = "0.4"
 tower-http = { version = "0.4", features = ["cors", "trace"] }
@@ -20,9 +20,15 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 duckdb = { version = "0.10", features = ["bundled"] }
 prost-types = "0.12"
 tonic-web = "0.11"
+mime_guess = "2"
 
 [dependencies.gaia-stub]
-path = "../gaia-stub"
+git = "https://github.com/arkedge/gaia"
+branch = "main"
+version = "1.2"
+
+[dependencies.gaia-recorder-frontend]
+path = "frontend"
 version = "1.2"
 
 [[bin]]

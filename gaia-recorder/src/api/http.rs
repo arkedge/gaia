@@ -185,7 +185,6 @@ async fn query_telemetry(
         .await
         .unwrap_or_default();
     if db_path.is_empty() {
-        tracing::warn!("No database path found for session_id={:?}", query.session_id);
         return Ok(Json(TelemetryQueryResponse { samples: vec![] }));
     }
 
@@ -202,10 +201,6 @@ async fn query_telemetry(
             .and_then(|res| res.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
 
             if let (Some(db_start), Some(db_end)) = (db_start, db_end) {
-                tracing::info!(
-                    "Playback mode: adjusting query time range from [{}, {}] to database range [{}, {}]",
-                    query.start_ms, query.end_ms, db_start, db_end
-                );
                 (db_start, db_end)
             } else {
                 (query.start_ms, query.end_ms)
@@ -295,11 +290,15 @@ async fn get_schema(
 ) -> Result<axum::response::Response, axum::http::StatusCode> {
     let guard = state.read().await;
     match &guard.schema_json {
-        Some(json) => Ok((
-            [(axum::http::header::CONTENT_TYPE, "application/json")],
-            json.clone(),
-        )
-            .into_response()),
+        Some(json) => {
+            // Check if this is tlmcmddb format (has "components" array)
+            // If so, return as-is since ChartsView will parse it
+            Ok((
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                json.clone(),
+            )
+                .into_response())
+        }
         None => Err(axum::http::StatusCode::NOT_FOUND),
     }
 }

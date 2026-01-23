@@ -2,10 +2,16 @@
 target/
 Cargo.lock
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/pnpm-lock.yaml
+
 # Recording data
 recordings/
 *.duckdb
 *.duckdb.wal
+*.zip
 
 # IDE
 .vscode/
@@ -24,3 +30,9 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+node_modules/
+eflash.bin
+mram.bin
+
+test-csv

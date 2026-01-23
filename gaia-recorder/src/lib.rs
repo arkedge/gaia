@@ -1,5 +1,6 @@
 pub mod db;
 pub mod domain;
+pub mod frontend_server;
 pub mod transform;
 
 pub use db::{build_params_json, insert_command_log, insert_telemetry_sample};

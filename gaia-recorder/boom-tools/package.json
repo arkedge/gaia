@@ -1,0 +1,15 @@
+{
+  "name": "gaia-recorder-boom-tools",
+  "version": "1.2.0",
+  "scripts": {
+    "preinstall": "./install.sh"
+  },
+  "bin": {
+    "tmtc-c2a": "./bin/tmtc-c2a",
+    "tlmcmddb-cli": "./bin/tlmcmddb-cli",
+    "kble": "./bin/kble",
+    "kble-c2a": "./bin/kble-c2a",
+    "jrsonnet": "./bin/jrsonnet",
+    "gaia-recorder": "./bin/gaia-recorder"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "gaia-recorder-project",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "run:recorder": "gaia-recorder --data-dir recordings --tlmcmddb example/tlmcmddb.json",
+    "run:gaia": "sleep 2 && tmtc-c2a --satconfig example/satconfig.json --tlmcmddb example/tlmcmddb.json --recorder-endpoint http://127.0.0.1:8920",
+    "run:kble": "bash -c \"while :; do kble -s <(example/spaghetti.sh); sleep 1; done\"",
+    "run": "run-p run:*",
+    "devtools": "run-s run",
+    "sils": "bash -c \"example/c2a-4la-mobc-sils\"",
+    "start": "run-p devtools sils",
+    "playback": "gaia-recorder --data-dir recordings --tlmcmddb example/tlmcmddb.json --playback-mode"
+  },
+  "devDependencies": {
+    "npm-run-all2": "6.2.2",
+    "gaia-recorder-boom-tools": "file:./boom-tools"
+  },
+  "packageManager": "pnpm@9.1.1"
+}

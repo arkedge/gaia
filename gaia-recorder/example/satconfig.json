@@ -1,0 +1,328 @@
+{
+  "aos_scid": 0,
+  "tc_scid": 343,
+  "tlm_apid_map": {
+    "1296": "MOBC",
+    "1297": "AOBC",
+    "1298": "TOBC",
+    "1299": "LOBC",
+    "1300": "MIF",
+    "1301": "PCDU",
+    "1554": "LCT"
+  },
+  "cmd_apid_map": {
+    "MOBC": 528,
+    "AOBC": 529,
+    "TOBC": 530,
+    "LOBC": 531,
+    "MIF": 532,
+    "PCDU": 533,
+    "LCT": 783
+  },
+  "tlm_channel_map": {
+    "RT": {
+      "destination_flag_mask": 3
+    },
+    "DR": {
+      "destination_flag_mask": 8
+    }
+  },
+  "cmd_prefix_map": {
+    "RT": {
+      "MOBC": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "AOBC": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "TOBC": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "LOBC": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "MIF": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "PCDU": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      },
+      "LCT": {
+        "has_time_indicator": false,
+        "destination_type": 15,
+        "execution_type": 0
+      }
+    },
+    "TL": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 1
+      }
+    },
+    "BL": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 2
+      }
+    },
+    "UTL": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 4
+      }
+    },
+    "TL_MIS": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 7
+      }
+    },
+    "UTL_MIS": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 15,
+        "execution_type": 8
+      }
+    },
+    "MOBC_TL": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 1
+      }
+    },
+    "MOBC_BL": {
+      "MOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "AOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "TOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "LOBC": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "MIF": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "PCDU": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      },
+      "LCT": {
+        "has_time_indicator": true,
+        "destination_type": 0,
+        "execution_type": 2
+      }
+    }
+  }
+}
