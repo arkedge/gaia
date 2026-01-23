@@ -749,6 +749,10 @@ fn query_telemetry_from_db(
     max_points: usize,
     time_axis: &str,
 ) -> Result<Vec<TelemetrySample>> {
+    // Check if database file exists to prevent creating empty files
+    if !std::path::Path::new(db_path).exists() {
+        return Ok(Vec::new());
+    }
     let conn = Connection::open(db_path)?;
     let time_column = if time_axis == "received" {
         "time_received_ms"

@@ -58,35 +58,48 @@ cleanup() {
 
     # Backup database to G drive if enabled
     if [ "$ENABLE_BACKUP" = true ] && [ -d "$RECORDINGS_DIR" ]; then
+        echo "Starting backup to G drive..."
         G_DRIVE_BASE='G:\共有ドライブ\ArkEdge Users\HirokiHarada\zatsu\ログデータ'
 
         set +e
         cmd.exe /c "if exist G:\\ (exit /b 0) else (exit /b 1)" >/dev/null 2>&1
         if [ $? -eq 0 ]; then
-            DB_FILES=$(find "$RECORDINGS_DIR" -name "*.duckdb" -type f 2>/dev/null)
-            for db in $DB_FILES; do
-                WINDOWS_SRC=$(wslpath -w "$(realpath "$db")")
-                WINDOWS_FILE=$(basename "$db")
-                powershell.exe -NoProfile -Command "
-                    \$base = '$G_DRIVE_BASE'
-                    \$dirName = '$CURRENT_DIR_NAME'
-                    \$targetDir = Join-Path \$base \$dirName
-                    \$src = '$WINDOWS_SRC'
-                    \$dst = Join-Path \$targetDir '$WINDOWS_FILE'
+            # Use robocopy for faster bulk copy
+            WINDOWS_SRC=$(wslpath -w "$(realpath "$RECORDINGS_DIR")")
 
-                    if (-not (Test-Path \$targetDir)) {
-                        New-Item -Path \$targetDir -ItemType Directory -Force | Out-Null
-                    }
+            # Run backup with timeout (30 seconds max)
+            timeout 30 powershell.exe -NoProfile -WindowStyle Hidden -Command "
+                \$base = '$G_DRIVE_BASE'
+                \$dirName = '$CURRENT_DIR_NAME'
+                \$targetDir = Join-Path \$base \$dirName
+                \$src = '$WINDOWS_SRC'
 
-                    if (-not (Test-Path \$dst)) {
-                        Copy-Item -Path \$src -Destination \$targetDir -ErrorAction SilentlyContinue
-                        if (\$?) { exit 0 } else { exit 1 }
-                    } else {
-                        exit 0
-                    }
-                " >/dev/null 2>&1
-                [ $? -eq 0 ] && echo "Backed up: $CURRENT_DIR_NAME/$WINDOWS_FILE"
-            done
+                if (-not (Test-Path \$targetDir)) {
+                    New-Item -Path \$targetDir -ItemType Directory -Force | Out-Null
+                }
+
+                # Use robocopy for efficient copying (only copy new files)
+                # /XO = exclude older files, /R:0 = no retry, /W:0 = no wait between retries
+                \$null = robocopy \$src \$targetDir *.duckdb /XO /R:0 /W:0 /NP /NDL /NJH /NJS
+
+                # robocopy returns 0-7 for success (0=no files, 1=files copied, etc)
+                if (\$LASTEXITCODE -le 7) {
+                    exit 0
+                } else {
+                    exit 1
+                }
+            " >/dev/null 2>&1
+
+            BACKUP_STATUS=$?
+            if [ $BACKUP_STATUS -eq 0 ] || [ $BACKUP_STATUS -eq 124 ]; then
+                # 0 = success, 124 = timeout (partial success)
+                [ $BACKUP_STATUS -eq 124 ] && echo "Backup timeout - partial backup completed"
+                # [ $BACKUP_STATUS -eq 0 ] && echo "Backup completed: $CURRENT_DIR_NAME/"
+            else
+                echo "Backup failed or G drive not accessible"
+            fi
+        else
+            echo "G drive not available - skipping backup"
         fi
         set -e
     fi

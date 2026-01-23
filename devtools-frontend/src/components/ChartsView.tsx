@@ -216,8 +216,10 @@ const buildSeriesId = (tmivName: string, fieldName: string, isRaw: boolean) =>
 
 // Convert field name from schema format (SH_TI) to database format (SH.TI:conv or SH.TI:raw)
 const convertFieldNameForQuery = (fieldName: string, isRaw: boolean): string => {
+  // Remove @RAW suffix if present (schema may include it)
+  let baseName = fieldName.replace(/@RAW$/i, "");
   // Replace underscores with dots to match database storage format
-  const baseName = fieldName.replace(/_/g, ".");
+  baseName = baseName.replace(/_/g, ".");
   return `${baseName}:${isRaw ? "raw" : "conv"}`;
 };
 
@@ -1305,11 +1307,8 @@ export const ChartsView: React.FC = () => {
           return s;
         }
         const nextId = buildSeriesId(s.tmivName, s.fieldName, !s.isRaw);
-        const existingMap = valueMapsRef.current.get(s.id);
+        // Don't copy labelMap when switching modes - raw and conv have different data formats
         valueMapsRef.current.delete(s.id);
-        if (existingMap) {
-          valueMapsRef.current.set(nextId, existingMap);
-        }
         return { ...s, isRaw: !s.isRaw, id: nextId };
       });
     if (panel === "A") {
@@ -1317,6 +1316,12 @@ export const ChartsView: React.FC = () => {
     } else {
       setPanelBSeries(update);
     }
+    // Remove old series data so it will be re-fetched with new ID
+    setSeriesData((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
   }, []);
 
   const updateRecorderEndpoint = useCallback(
