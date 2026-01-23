@@ -1,1 +1,25 @@
 target/
+gaia-recorder/recordings/*.duckdb
+*.zip
+
+# Logs
+*.log
+
+# DuckDB files
+*.duckdb
+*.duckdb.wal
+
+# Recordings and test data
+recordings/
+gaia-recorder/test-recordings/
+
+
+# Claude Code configuration
+.claude/
+
+# Debug files
+debug.png
+
+# Local config (may contain sensitive data)
+tmtc-c2a/satconfig.json
+tmtc-c2a/tlmcmddb.json

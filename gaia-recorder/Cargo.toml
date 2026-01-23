@@ -28,7 +28,3 @@ version = "1.2"
 [[bin]]
 name = "import-csv"
 path = "src/bin/import-csv.rs"
-
-[[example]]
-name = "check_data"
-path = "examples/check_data.rs"

@@ -1,4 +1,5 @@
 mod domain;
+mod transform;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
@@ -6,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use domain::ValueType;
+use transform::FieldName;
 use axum::{
     error_handling::HandleErrorLayer,
     extract::Query,
@@ -653,13 +655,9 @@ fn insert_tmiv_field(
     time_received_ms: i64,
 ) -> Result<()> {
     // Store field_name with :raw or :conv suffix (same format as CSV import)
-    let (field_name, is_raw) = if field.name.ends_with("@RAW") {
-        let base_name = field.name.trim_end_matches("@RAW").replace('_', ".");
-        (format!("{}:raw", base_name), 1)
-    } else {
-        let base_name = field.name.replace('_', ".");
-        (format!("{}:conv", base_name), 0)
-    };
+    let field_name_parsed = FieldName::from_grpc(&field.name);
+    let field_name = field_name_parsed.to_db_format();
+    let is_raw = field_name_parsed.is_raw_int();
 
     let mut value_num: Option<f64> = None;
     let mut value_int: Option<i64> = None;

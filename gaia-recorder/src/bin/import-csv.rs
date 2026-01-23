@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
+use gaia_recorder::FieldName;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "Import CSV telemetry and command logs to gaia-recorder database")]
@@ -172,17 +173,13 @@ fn import_telemetry_csv(conn: &Connection, csv_path: &Path) -> Result<()> {
             continue; // Skip timestamp column
         }
 
-        // Convert field name format:
+        // Convert field name format using FieldName struct:
         // - Replace underscore with dot: SH_TI -> SH.TI
         // - Replace @RAW suffix with :raw: SH_TI@RAW -> SH.TI:raw
         // - Add :conv suffix if no @RAW: SH_TI -> SH.TI:conv
-        let field_name_clean = if header.contains("@RAW") {
-            header.replace("@RAW", ":raw").replace('_', ".")
-        } else {
-            format!("{}:conv", header.replace('_', "."))
-        };
-
-        let is_raw = if field_name_clean.ends_with(":raw") { 1 } else { 0 };
+        let field_name_parsed = FieldName::from_grpc(header);
+        let field_name_clean = field_name_parsed.to_db_format();
+        let is_raw = field_name_parsed.is_raw_int();
 
         // Use column name with quotes to handle special characters
         // Parse timestamp: Truncate nanoseconds to microseconds and remove space before timezone
