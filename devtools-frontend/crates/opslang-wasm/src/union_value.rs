@@ -7,6 +7,7 @@ type Value =
   {kind : "bool", value : boolean } |
   {kind: "array", value : Value[] } |
   {kind: "string", value: string } |
+  {kind: "bytes", value: Uint8Array } |
   {kind: "duration", value: bigint } |
   {kind: "datetime", value: bigint }
 "#;
@@ -26,6 +27,8 @@ extern "C" {
     fn as_array(_: &UnionValue) -> Option<Vec<UnionValue>>;
     #[wasm_bindgen(js_name = "asString")]
     fn as_string(_: &UnionValue) -> Option<std::string::String>;
+    #[wasm_bindgen(js_name = "asBytes")]
+    fn as_bytes(_: &UnionValue) -> Option<Vec<u8>>;
     #[wasm_bindgen(js_name = "asDuration")]
     fn as_duration(_: &UnionValue) -> Option<i64>;
     #[wasm_bindgen(js_name = "asDateTime")]
@@ -41,6 +44,8 @@ extern "C" {
     fn make_array(_: Vec<UnionValue>) -> UnionValue;
     #[wasm_bindgen(js_name = "makeString")]
     fn make_string(_: std::string::String) -> UnionValue;
+    #[wasm_bindgen(js_name = "makeBytes")]
+    fn make_bytes(_: Vec<u8>) -> UnionValue;
     #[wasm_bindgen(js_name = "makeDuration")]
     fn make_duration(_: i64) -> UnionValue;
     #[wasm_bindgen(js_name = "makeDateTime")]
@@ -63,6 +68,8 @@ impl From<UnionValue> for Value {
             Array(vs)
         } else if let Some(v) = as_string(&v) {
             String(v)
+        } else if let Some(v) = as_bytes(&v) {
+            Bytes(v)
         } else if let Some(v) = as_duration(&v) {
             Duration(chrono::Duration::milliseconds(v))
         } else if let Some(v) = as_datetime(&v) {
@@ -84,6 +91,7 @@ impl From<Value> for UnionValue {
                 make_array(vs)
             }
             String(v) => make_string(v),
+            Bytes(v) => make_bytes(v),
             Duration(v) => make_duration(v.num_milliseconds()),
             DateTime(v) => make_datetime(v.timestamp_millis()),
         }

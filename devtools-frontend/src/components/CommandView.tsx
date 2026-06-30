@@ -27,6 +27,17 @@ type CommandLine = {
   parameters: ParameterValue[];
 };
 
+const bytesToBigInt = (bytes: Uint8Array): bigint => {
+  let value = 0n;
+  for (const byte of bytes) {
+    value = (value << 8n) + BigInt(byte);
+  }
+  return value;
+};
+
+const bytesToHex = (bytes: Uint8Array): string =>
+  [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+
 const buildTco = (
   commandPrefixes: { [key: string]: CommandPrefixSchema },
   commandComponents: { [key: string]: CommandComponentSchema },
@@ -298,6 +309,12 @@ class Driver implements opslang.Driver {
             type: "integer",
             integer: ti,
           };
+        } else if (arg.kind === "bytes") {
+          return {
+            type: "bytes",
+            bytes: arg.value,
+            bigint: bytesToBigInt(arg.value),
+          };
         } else {
           throw new Error(`cannot convert ${arg.kind}`);
         }
@@ -330,7 +347,7 @@ class Driver implements opslang.Driver {
       case "string":
         return { kind: "string", value: value.string };
       case "bytes":
-        return undefined;
+        return { kind: "bytes", value: value.bytes };
       case "double":
         return { kind: "double", value: value.double };
       case "integer":
@@ -373,6 +390,8 @@ class Driver implements opslang.Driver {
       } else if (value.kind === "datetime") {
         const d = new Date(Number(value.value));
         return d.toISOString();
+      } else if (value.kind === "bytes") {
+        return `0x${bytesToHex(value.value)}`;
       }
       return JSON.stringify(value.value);
     };

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use anyhow::{Context, Result};
-use axum::{error_handling::HandleError, response::Redirect, routing::get};
+use axum::{response::Redirect, routing::get};
 use clap::Parser;
 use gaia_tmtc::broker::broker_server::BrokerServer;
 use gaia_tmtc::recorder::recorder_client::RecorderClient;
@@ -18,7 +18,8 @@ use gaia_tmtc::{
 use notalawyer_clap::*;
 use tmtc_c2a::proto::tmtc_generic_c2a::tmtc_generic_c2a_server::TmtcGenericC2aServer;
 use tonic::server::NamedService;
-use tonic::transport::{Channel, Server, Uri};
+use tonic::service::Routes;
+use tonic::transport::{Channel, Uri};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower::ServiceBuilder;
@@ -168,19 +169,19 @@ async fn main() -> Result<()> {
         let reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(broker::FILE_DESCRIPTOR_SET)
             .register_encoded_file_descriptor_set(proto::tmtc_generic_c2a::FILE_DESCRIPTOR_SET)
-            .build()
+            .build_v1()
             .unwrap();
 
         let socket_addr = SocketAddr::new(args.broker_addr, args.broker_port);
         tracing::info!(message = "starting broker", %socket_addr);
 
-        let rpc_service = Server::builder()
-            .layer(layer)
+        let mut routes = Routes::builder();
+        routes
             .add_service(broker_server)
             .add_service(tmtc_generic_c2a_server)
             .add_service(health_service)
-            .add_service(reflection_service)
-            .into_service();
+            .add_service(reflection_service);
+        let rpc_service = routes.routes().into_axum_router().layer(layer);
 
         let app = axum::Router::new();
         #[cfg(feature = "devtools")]
@@ -191,8 +192,11 @@ async fn main() -> Result<()> {
         let app = app
             .route("/", get(|| async { Redirect::to("/devtools/") }))
             .route("/devtools", get(|| async { Redirect::to("/devtools/") }))
-            .fallback_service(HandleError::new(rpc_service, handle_rpc_error));
-        axum::Server::bind(&socket_addr).serve(app.into_make_service())
+            .fallback_service(rpc_service);
+        async move {
+            let listener = tokio::net::TcpListener::bind(socket_addr).await?;
+            axum::serve(listener, app.into_make_service()).await
+        }
     };
 
     tokio::select! {
@@ -200,17 +204,4 @@ async fn main() -> Result<()> {
         ret = kble_socket_fut => Ok(ret?),
         ret = server_task => Ok(ret?),
     }
-}
-
-async fn handle_rpc_error(
-    err: Box<dyn std::error::Error + Send + Sync>,
-) -> impl axum::response::IntoResponse {
-    (
-        axum::http::StatusCode::OK,
-        [
-            ("content-type", "application/grpc".to_owned()),
-            ("grpc-status", "13".to_owned()),
-            ("content-type", format!("internal error: {err}")),
-        ],
-    )
 }

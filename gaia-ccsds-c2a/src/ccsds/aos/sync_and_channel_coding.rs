@@ -1,5 +1,5 @@
 use anyhow::Result;
-use zerocopy::Unaligned;
+use zerocopy::{Immutable, KnownLayout, Unaligned};
 
 use super::TransferFrame;
 
@@ -17,7 +17,9 @@ impl TransferFrameBuffer {
         Self { bytes }
     }
 
-    pub fn transfer_frame<T: Unaligned>(&self) -> Option<TransferFrame<&[u8], T>> {
+    pub fn transfer_frame<T: Immutable + KnownLayout + Unaligned>(
+        &self,
+    ) -> Option<TransferFrame<&[u8], T>> {
         TransferFrame::<_, T>::new(self.bytes.as_slice())
     }
 

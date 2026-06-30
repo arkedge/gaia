@@ -1,4 +1,4 @@
-use opslang_ast::*;
+use opslang_ast::v0::*;
 use wasm_bindgen::prelude::*;
 
 mod free_variables;
@@ -228,6 +228,7 @@ impl Runner {
             Numeric(num, s) => self.numeric(num, s),
             String(s) => Ok(Value::String((*s).to_owned())),
             DateTime(d) => Ok(Value::DateTime(*d)),
+            Bytes(bytes) => Ok(Value::Bytes(bytes.clone())),
             TlmId(tlm_id) => {
                 if let Some(tlmid) = self.driver.get_telemetry_id(tlm_id.as_str()) {
                     Ok(Value::Integer(tlmid))
@@ -357,6 +358,11 @@ impl Runner {
                         let end = right[1].bool()?;
                         Ok((start <= x && x <= end).into())
                     }
+                    Bytes(x) => {
+                        let start = right[0].bytes()?;
+                        let end = right[1].bytes()?;
+                        Ok((start <= &x && &x <= end).into())
+                    }
                     _ => type_err("comparable", &left),
                 }
             }
@@ -387,7 +393,7 @@ impl Runner {
                     Double(x) => Ok(Double(-x)),
                     Bool(x) => Ok(Bool(!x)),
                     Duration(x) => Ok(Duration(-x)),
-                    Array(_) | String(_) | DateTime(_) => {
+                    Array(_) | String(_) | Bytes(_) | DateTime(_) => {
                         type_err("numeric, bool, or duration", &v)
                     }
                 }
@@ -403,6 +409,7 @@ impl Runner {
             Bool(x) => Some(x.cmp(&right.bool()?)),
             Array(_) => return type_err("comparable", left),
             String(x) => Some(x[..].cmp(right.string()?)),
+            Bytes(x) => Some(x.cmp(right.bytes()?)),
             Duration(x) => Some(x.cmp(&right.duration()?)),
             DateTime(x) => Some(x.cmp(&right.datetime()?)),
         };
@@ -463,6 +470,7 @@ impl Runner {
         use SingleStatement::*;
         match stmt {
             Call(_) => unimpl("stmt.call"),
+            Return => unimpl("stmt.return"),
             Wait(c) => {
                 // Wait文の条件式として有効なものは以下の3条件によって帰納的に定義される
                 // 1. bool型に評価される式であって、式のトップレベルの構成子が二項論理演算子でないものは有効

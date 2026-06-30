@@ -1,0 +1,15 @@
+[package]
+name = "wait-timeout"
+version = "0.2.1"
+edition = "2021"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+description = "A crate to wait on a child process with a timeout specified across Unix and Windows platforms."
+homepage = "https://github.com/alexcrichton/wait-timeout"
+documentation = "https://docs.rs/wait-timeout"
+categories = ["os"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/alexcrichton/wait-timeout"
+
+[lib]
+name = "wait_timeout"
+path = "src/lib.rs"

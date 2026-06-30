@@ -1,10 +1,10 @@
 #![allow(clippy::identity_op)]
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, FromBytes, Unaligned};
+use zerocopy::{IntoBytes, KnownLayout, Immutable, FromBytes, Unaligned};
 
 #[bitfield(bytes = 4)]
-#[derive(Debug, Default, Clone, FromBytes, AsBytes, Unaligned)]
+#[derive(Debug, Default, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned)]
 #[repr(C)]
 pub struct CLCW {
     pub control_word_type: B1,

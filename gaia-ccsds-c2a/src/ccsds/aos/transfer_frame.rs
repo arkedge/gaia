@@ -3,10 +3,10 @@
 use std::{fmt::Display, mem};
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, ByteSlice, FromBytes, LayoutVerified, Unaligned};
+use zerocopy::{ByteSlice, FromBytes, Immutable, IntoBytes, KnownLayout, Ref, SplitByteSlice, Unaligned};
 
 #[bitfield(bytes = 6)]
-#[derive(Debug, Default, Clone, FromBytes, AsBytes, Unaligned)]
+#[derive(Debug, Default, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned)]
 #[repr(C)]
 pub struct PrimaryHeader {
     pub version_number: B2,
@@ -66,19 +66,19 @@ impl Display for FrameCount {
 }
 
 pub struct TransferFrame<B, T> {
-    pub primary_header: LayoutVerified<B, PrimaryHeader>,
+    pub primary_header: Ref<B, PrimaryHeader>,
     pub data_unit_zone: B,
-    pub trailer: LayoutVerified<B, T>,
+    pub trailer: Ref<B, T>,
 }
 
 impl<B, T> TransferFrame<B, T>
 where
-    B: ByteSlice,
-    T: Unaligned,
+    B: ByteSlice + SplitByteSlice,
+    T: Immutable + KnownLayout + Unaligned,
 {
     pub fn new(bytes: B) -> Option<Self> {
-        let (primary_header, tail) = LayoutVerified::new_unaligned_from_prefix(bytes)?;
-        let (data_unit_zone, trailer) = LayoutVerified::new_unaligned_from_suffix(tail)?;
+        let (primary_header, tail) = Ref::from_prefix(bytes).ok()?;
+        let (data_unit_zone, trailer) = Ref::from_suffix(tail).ok()?;
         Some(Self {
             primary_header,
             data_unit_zone,
@@ -89,7 +89,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use zerocopy::LayoutVerified;
+    use zerocopy::Ref;
 
     use super::*;
 
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_read() {
-        let ph = LayoutVerified::<_, PrimaryHeader>::new(CASE1.as_slice()).unwrap();
+        let ph = Ref::<_, PrimaryHeader>::new(CASE1.as_slice()).unwrap();
         assert_eq!(1, ph.version_number());
         assert_eq!(0xDE, ph.scid());
         assert_eq!(1, ph.vcid());
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_write() {
         let mut bytes = [0u8; 6];
-        let mut ph = LayoutVerified::<_, PrimaryHeader>::new(bytes.as_mut_slice()).unwrap();
+        let mut ph = Ref::<_, PrimaryHeader>::new(bytes.as_mut_slice()).unwrap();
         ph.set_version_number(1);
         ph.set_scid(0xDE);
         ph.set_vcid(1);

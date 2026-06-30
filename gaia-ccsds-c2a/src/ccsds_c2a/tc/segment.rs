@@ -3,21 +3,21 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use zerocopy::{ByteSlice, ByteSliceMut, LayoutVerified};
+use zerocopy::{ByteSlice, ByteSliceMut, Ref, SplitByteSlice};
 
 use crate::ccsds::tc::segment::*;
 
 pub struct Builder<B> {
-    header: LayoutVerified<B, Header>,
+    header: Ref<B, Header>,
     body: B,
 }
 
 impl<B> Builder<B>
 where
-    B: ByteSlice,
+    B: ByteSlice + SplitByteSlice,
 {
     pub fn new(bytes: B) -> Option<Self> {
-        let (header, body) = LayoutVerified::new_unaligned_from_prefix(bytes)?;
+        let (header, body) = Ref::from_prefix(bytes).ok()?;
         Some(Self { header, body })
     }
 }
@@ -47,7 +47,7 @@ where
     type Target = Header;
 
     fn deref(&self) -> &Self::Target {
-        &self.header
+        &*self.header
     }
 }
 
@@ -56,6 +56,6 @@ where
     B: ByteSliceMut,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.header
+        &mut *self.header
     }
 }

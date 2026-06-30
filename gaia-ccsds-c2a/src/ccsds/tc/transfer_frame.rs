@@ -3,10 +3,10 @@
 use std::mem;
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, FromBytes, Unaligned};
+use zerocopy::{IntoBytes, KnownLayout, Immutable, FromBytes, Unaligned};
 
 #[bitfield(bytes = 5)]
-#[derive(Debug, Default, Clone, FromBytes, AsBytes, Unaligned)]
+#[derive(Debug, Default, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned)]
 #[repr(C)]
 pub struct PrimaryHeader {
     pub version_number: B2,
@@ -38,7 +38,7 @@ pub const MAX_SIZE: usize = 1024;
 
 #[cfg(test)]
 mod tests {
-    use zerocopy::LayoutVerified;
+    use zerocopy::Ref;
 
     use super::*;
 
@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_read() {
-        let ph = LayoutVerified::<_, PrimaryHeader>::new(CASE1.as_slice()).unwrap();
+        let ph = Ref::<_, PrimaryHeader>::new(CASE1.as_slice()).unwrap();
         assert_eq!(1, ph.version_number());
         assert!(ph.bypass_flag());
         assert!(ph.control_command_flag());
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn test_write() {
         let mut bytes = [0u8; 5];
-        let mut ph = LayoutVerified::<_, PrimaryHeader>::new(bytes.as_mut_slice()).unwrap();
+        let mut ph = Ref::<_, PrimaryHeader>::new(bytes.as_mut_slice()).unwrap();
         ph.set_version_number(1);
         ph.set_bypass_flag(true);
         ph.set_control_command_flag(true);

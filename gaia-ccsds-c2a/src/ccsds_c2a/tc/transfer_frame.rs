@@ -3,7 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use zerocopy::{ByteSlice, ByteSliceMut, LayoutVerified};
+use zerocopy::{ByteSlice, ByteSliceMut, Ref, SplitByteSlice};
 
 pub use crate::ccsds::tc::transfer_frame::*;
 
@@ -42,16 +42,16 @@ where
 }
 
 pub struct BareBuilder<B> {
-    primary_header: LayoutVerified<B, PrimaryHeader>,
+    primary_header: Ref<B, PrimaryHeader>,
     data_field: B,
 }
 
 impl<B> BareBuilder<B>
 where
-    B: ByteSlice,
+    B: ByteSlice + SplitByteSlice,
 {
     fn new(bytes: B) -> Option<Self> {
-        let (primary_header, data_field) = LayoutVerified::new_unaligned_from_prefix(bytes)?;
+        let (primary_header, data_field) = Ref::from_prefix(bytes).ok()?;
         Some(Self {
             primary_header,
             data_field,
@@ -89,7 +89,7 @@ where
     type Target = PrimaryHeader;
 
     fn deref(&self) -> &Self::Target {
-        &self.primary_header
+        &*self.primary_header
     }
 }
 
@@ -98,6 +98,6 @@ where
     B: ByteSliceMut,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.primary_header
+        &mut *self.primary_header
     }
 }

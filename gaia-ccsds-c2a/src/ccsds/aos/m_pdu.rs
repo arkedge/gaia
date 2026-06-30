@@ -3,12 +3,12 @@ use std::mem;
 
 use anyhow::{anyhow, ensure, Result};
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, FromBytes, LayoutVerified, Unaligned};
+use zerocopy::{IntoBytes, KnownLayout, Immutable, FromBytes, Ref, Unaligned};
 
 use crate::ccsds::space_packet::{self, SpacePacket};
 
 #[bitfield(bytes = 2)]
-#[derive(Debug, Default, Clone, FromBytes, AsBytes, Unaligned)]
+#[derive(Debug, Default, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned)]
 #[repr(C)]
 pub struct Header {
     #[skip]
@@ -75,7 +75,8 @@ pub struct Defragmenter {
 impl Defragmenter {
     pub fn push(&mut self, m_pdu_bytes: &[u8]) -> Result<bool> {
         let (header, packet_zone) =
-            LayoutVerified::<_, Header>::new_unaligned_from_prefix(m_pdu_bytes)
+            Ref::<_, Header>::from_prefix(m_pdu_bytes)
+                .ok()
                 .ok_or_else(|| anyhow!("given M_PDU is too small"))?;
         ensure!(
             packet_zone.len() > space_packet::PrimaryHeader::SIZE,
@@ -142,11 +143,11 @@ mod tests {
         let m_pdu1 = {
             let mut bytes = [0u8; Header::SIZE + space_packet::PrimaryHeader::SIZE + 1];
             let (mut m_pdu_hdr, pz) =
-                LayoutVerified::<_, Header>::new_unaligned_from_prefix(bytes.as_mut_slice())
+                Ref::<_, Header>::from_prefix(bytes.as_mut_slice())
                     .unwrap();
             m_pdu_hdr.set_first_header_pointer_raw(0);
             let (mut ph, ud) =
-                LayoutVerified::<_, space_packet::PrimaryHeader>::new_unaligned_from_prefix(pz)
+                Ref::<_, space_packet::PrimaryHeader>::from_prefix(pz)
                     .unwrap();
             ph.set_packet_data_length_in_bytes(1);
             ud[0] = 0xde;

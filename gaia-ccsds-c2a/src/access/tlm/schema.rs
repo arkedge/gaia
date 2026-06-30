@@ -104,7 +104,11 @@ impl<'a> Iterator for TelemetryIter<'a> {
             tlm_id: telemetry.metadata.packet_id,
             is_restriced: telemetry.metadata.is_restricted,
         };
-        let fields = Box::new(iter_fields(&telemetry.entries).filter_map(|(obs, field)| {
+        let entries = match &telemetry.content {
+            tlmdb::Content::Struct(entries) => entries.as_slice(),
+            tlmdb::Content::Blob => &[],
+        };
+        let fields = Box::new(iter_fields(entries).filter_map(|(obs, field)| {
             build_bit_range(&field.extraction_info).map(|bit_range| (obs, field, bit_range))
         }));
         Some((metadata, FieldIter { fields }))

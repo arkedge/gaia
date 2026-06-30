@@ -3,10 +3,10 @@
 use std::mem;
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, ByteSlice, FromBytes, LayoutVerified, Unaligned};
+use zerocopy::{ByteSlice, FromBytes, Immutable, IntoBytes, KnownLayout, Ref, SplitByteSlice, Unaligned};
 
 #[bitfield(bytes = 6)]
-#[derive(Debug, FromBytes, AsBytes, Unaligned, Default)]
+#[derive(Debug, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned, Default)]
 #[repr(C)]
 pub struct PrimaryHeader {
     pub version_number: B3,
@@ -41,22 +41,22 @@ impl PrimaryHeader {
 
 #[derive(Debug)]
 pub struct SpacePacket<B: ByteSlice> {
-    pub primary_header: LayoutVerified<B, PrimaryHeader>,
+    pub primary_header: Ref<B, PrimaryHeader>,
     pub packet_data: B,
 }
 
 impl<B> SpacePacket<B>
 where
-    B: ByteSlice,
+    B: ByteSlice + SplitByteSlice,
 {
     pub fn new(bytes: B) -> Option<(SpacePacket<B>, B)> {
         let (primary_header, tail) =
-            LayoutVerified::<_, PrimaryHeader>::new_unaligned_from_prefix(bytes)?;
+            Ref::<_, PrimaryHeader>::from_prefix(bytes).ok()?;
         let pd_size = primary_header.packet_data_length_in_bytes();
         if tail.len() < pd_size {
             return None;
         }
-        let (packet_data, trailer) = tail.split_at(pd_size);
+        let (packet_data, trailer) = tail.split_at(pd_size).ok()?;
         let space_packet = SpacePacket {
             primary_header,
             packet_data,

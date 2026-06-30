@@ -1,4 +1,4 @@
-use opslang_ast::*;
+use opslang_ast::v0::*;
 use std::collections::HashSet;
 
 pub struct Variables {
@@ -23,7 +23,7 @@ impl Variables {
     fn stmt(&mut self, stmt: &SingleStatement) {
         use SingleStatement::*;
         match stmt {
-            Call(_) => (),
+            Call(_) | Return => (),
             Wait(w) => self.expr(&w.condition),
             Assert(c) => self.expr(&c.condition),
             AssertEq(c) => {

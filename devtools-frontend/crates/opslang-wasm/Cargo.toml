@@ -17,18 +17,19 @@ default = ["console_error_panic_hook"]
 [dependencies]
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3.69", features = ["console"] }
-opslang-ast = "0.2.1"
-opslang-parser = "0.2.1"
-async-recursion = "1.1.0"
+web-sys = { version = "0.3.103", features = ["console"] }
+getrandom = { version = "0.4.3", features = ["wasm_js"] }
+opslang-ast = { git = "https://github.com/arkedge/opslang-internal" }
+opslang-parser = { git = "https://github.com/arkedge/opslang-internal" }
+async-recursion = "1.1.1"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
-chrono = "0.4.38"
-regex = "1.10.4"
+chrono = "0.4.45"
+regex = "1.12.4"
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.42"
+wasm-bindgen-test = "0.3.76"

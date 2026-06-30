@@ -13,6 +13,7 @@ export const asDouble = asKind("double");
 export const asBool = asKind("bool");
 export const asArray = asKind("array");
 export const asString = asKind("string");
+export const asBytes = asKind("bytes");
 export const asDuration = asKind("duration");
 export const asDateTime = asKind("datetime");
 
@@ -30,5 +31,6 @@ export const makeDouble = make("double");
 export const makeBool = make("bool");
 export const makeArray = make("array");
 export const makeString = make("string");
+export const makeBytes = make("bytes");
 export const makeDuration = make("duration");
 export const makeDateTime = make("datetime");

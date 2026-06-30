@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::{
     env, fs, io,
     path::{Path, PathBuf},
@@ -16,14 +16,9 @@ fn main() {
     let devtools_build_dir = out_dir.join("devtools_frontend");
     copy_devtools_dir(".", &devtools_build_dir).unwrap();
 
-    let status = Command::new("corepack")
-        .arg("enable")
-        .current_dir(&devtools_build_dir)
-        .status()
-        .expect("failed to execute corepack");
-    assert!(status.success(), "failed to install pnpm via corepack");
+    enable_corepack_if_available(&devtools_build_dir);
 
-    let status = Command::new("pnpm")
+    let status = pnpm_command()
         .arg("install")
         .current_dir(&devtools_build_dir)
         .status()
@@ -42,7 +37,7 @@ fn main() {
     }
 
     let devtools_out_dir = out_dir.join("devtools_dist");
-    let status = Command::new("pnpm")
+    let status = pnpm_command()
         .current_dir(&devtools_build_dir)
         // vite.config.ts にwasmのビルド場所を教えるために環境変数を渡す
         .envs([("DEVTOOLS_CRATE_ROOT", crate_root_dir)])
@@ -51,8 +46,45 @@ fn main() {
         .arg("--outDir")
         .arg(&devtools_out_dir)
         .status()
-        .expect("failed to execute yarn");
+        .expect("failed to execute pnpm");
     assert!(status.success(), "failed to build frontend");
+}
+
+fn enable_corepack_if_available(current_dir: &Path) {
+    if !command_exists("corepack") {
+        return;
+    }
+
+    let status = Command::new("corepack")
+        .arg("enable")
+        .current_dir(current_dir)
+        .status()
+        .expect("failed to execute corepack");
+    assert!(status.success(), "failed to install pnpm via corepack");
+}
+
+fn pnpm_command() -> Command {
+    if command_exists("pnpm") {
+        return Command::new("pnpm");
+    }
+
+    if command_exists("npm") {
+        let mut command = Command::new("npm");
+        command.args(["exec", "--yes", "pnpm@9.8.0", "--"]);
+        return command;
+    }
+
+    Command::new("pnpm")
+}
+
+fn command_exists(command: &str) -> bool {
+    Command::new(command)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok()
 }
 
 fn copy_devtools_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {

@@ -3,12 +3,12 @@
 use std::mem;
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, ByteSliceMut, FromBytes, LayoutVerified, Unaligned};
+use zerocopy::{ByteSliceMut, FromBytes, Immutable, IntoBytes, KnownLayout, Ref, SplitByteSlice, Unaligned};
 
 pub use crate::ccsds::space_packet::*;
 
 #[bitfield(bytes = 9)]
-#[derive(Debug, Clone, FromBytes, AsBytes, Unaligned)]
+#[derive(Debug, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned)]
 #[repr(C)]
 pub struct SecondaryHeader {
     pub version_number: B8,
@@ -31,18 +31,18 @@ impl Default for SecondaryHeader {
 }
 
 pub struct Builder<B> {
-    primary_header: LayoutVerified<B, PrimaryHeader>,
-    secondary_header: LayoutVerified<B, SecondaryHeader>,
+    primary_header: Ref<B, PrimaryHeader>,
+    secondary_header: Ref<B, SecondaryHeader>,
     user_data: B,
 }
 
 impl<B> Builder<B>
 where
-    B: ByteSliceMut,
+    B: ByteSliceMut + SplitByteSlice,
 {
     pub fn new(bytes: B) -> Option<Self> {
-        let (primary_header, tail) = LayoutVerified::new_unaligned_from_prefix(bytes)?;
-        let (secondary_header, user_data) = LayoutVerified::new_unaligned_from_prefix(tail)?;
+        let (primary_header, tail) = Ref::from_prefix(bytes).ok()?;
+        let (secondary_header, user_data) = Ref::from_prefix(tail).ok()?;
         Some(Self {
             primary_header,
             secondary_header,
@@ -51,11 +51,11 @@ where
     }
 
     pub fn ph_mut(&mut self) -> &mut PrimaryHeader {
-        &mut self.primary_header
+        &mut *self.primary_header
     }
 
     pub fn sh_mut(&mut self) -> &mut SecondaryHeader {
-        &mut self.secondary_header
+        &mut *self.secondary_header
     }
 
     pub fn user_data_mut(&mut self) -> &mut B {

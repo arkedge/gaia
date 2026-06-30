@@ -3,13 +3,13 @@
 use std::mem;
 
 use modular_bitfield_msb::prelude::*;
-use zerocopy::{AsBytes, ByteSlice, FromBytes, LayoutVerified, Unaligned};
+use zerocopy::{ByteSlice, FromBytes, Immutable, IntoBytes, KnownLayout, Ref, SplitByteSlice, Unaligned};
 
 use crate::ccsds;
 pub use crate::ccsds::space_packet::*;
 
 #[bitfield(bytes = 20)]
-#[derive(Debug, Clone, FromBytes, AsBytes, Unaligned, Default)]
+#[derive(Debug, Clone, FromBytes, IntoBytes, KnownLayout, Immutable, Unaligned, Default)]
 #[repr(C)]
 pub struct SecondaryHeader {
     pub version_number: B8,
@@ -38,18 +38,18 @@ impl SecondaryHeader {
 
 #[derive(Debug)]
 pub struct SpacePacket<B: ByteSlice> {
-    pub primary_header: LayoutVerified<B, PrimaryHeader>,
-    pub secondary_header: LayoutVerified<B, SecondaryHeader>,
+    pub primary_header: Ref<B, PrimaryHeader>,
+    pub secondary_header: Ref<B, SecondaryHeader>,
     pub user_data: B,
 }
 
 impl<B> SpacePacket<B>
 where
-    B: ByteSlice,
+    B: ByteSlice + SplitByteSlice,
 {
     pub fn from_generic(generic: ccsds::SpacePacket<B>) -> Option<Self> {
         let (secondary_header, user_data) =
-            LayoutVerified::<_, SecondaryHeader>::new_unaligned_from_prefix(generic.packet_data)?;
+            Ref::<_, SecondaryHeader>::from_prefix(generic.packet_data).ok()?;
         Some(Self {
             primary_header: generic.primary_header,
             secondary_header,

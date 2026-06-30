@@ -7,6 +7,9 @@ accepted = [
     "BSD-3-Clause",
     "ISC",
     "OpenSSL",
+    "Zlib",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
 ]
 
 workarounds = [
